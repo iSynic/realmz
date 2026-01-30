@@ -435,10 +435,30 @@ protected:
         this->set_modifier_value(EVMOD_COMMAND_KEY_DOWN, e.key.mod & SDL_KMOD_GUI);
 
         uint32_t message = mac_message_for_sdl_key_code(e.key.key, this->modifier_flags);
+        bool enqueue = true;
         if (message != 0) {
-          // TODO: Do keyboard events always go to the front window, or is
-          // there some notion of keyboard focus in Classic Mac OS?
-          this->enqueue_event((e.type == SDL_EVENT_KEY_DOWN) ? keyDown : keyUp, message, FrontWindow(), "");
+          if (e.type == SDL_EVENT_KEY_DOWN) {
+            // Key down repeats can come in faster than Realmz will process them, depending on the game speed settings.
+            // When key events get backlogged in that fashion, the game appears sluggish until it clears the queue. To
+            // prevent that, key repeats are deduplicated so that no key repeat enters the queue until the previous one
+            // has been processed. The queue is scanned backwards since events are inserted at the back.
+            auto cursor = event_queue.rbegin();
+            while (cursor != event_queue.rend()) {
+              EventRecord& existing = *cursor;
+              if (existing.what == keyDown && existing.message == message) {
+                em_log.info_f("Deduplicating key down for key=0x{:X}.", static_cast<size_t>(e.key.key));
+                enqueue = false;
+              }
+
+              ++cursor;
+            }
+          }
+
+          if (enqueue) {
+            // TODO: Do keyboard events always go to the front window, or is
+            // there some notion of keyboard focus in Classic Mac OS?
+            this->enqueue_event((e.type == SDL_EVENT_KEY_DOWN) ? keyDown : keyUp, message, FrontWindow(), "");
+          }
         } else {
           em_log.warning_f("Unknown key pressed: key=0x{:X} scancode=0x{:X}",
               static_cast<size_t>(e.key.key), static_cast<size_t>(e.key.scancode));
