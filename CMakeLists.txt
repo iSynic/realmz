@@ -3,10 +3,14 @@ cmake_minimum_required(VERSION 3.27)
 # Build against both ARM and x86_64 architectures for Apple targets. Both executables are packaged
 # together in a so-called "fat" binary. This must be set before the first call to either `project`
 # or `enable_language`.
-set(CACHE{CMAKE_OSX_ARCHITECTURES} "x86_64;arm64")
+if(DISABLE_FAT_BINARY)
+    set(CMAKE_OSX_ARCHITECTURES "arm64")
+else()
+    set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
+endif()
 
 # Lowest version of the MacOS SDK that we can compile our code against, currently.
-set(CACHE{CMAKE_OSX_DEPLOYMENT_TARGET} "13.3")
+set(CMAKE_OSX_DEPLOYMENT_TARGET "13.3")
 
 # Project setup
 project(Realmz
