@@ -232,9 +232,10 @@ OSErr SndPlay(SndChannelPtr chan, Handle data_handle, Boolean async) {
 OSErr SetDefaultOutputVolume(uint32_t level) {
   // level is apparently a number in the range [0, 7], where 0 is silent and 7 is full volume.
   if (level < 0 || level > 7) {
-    throw std::logic_error(std::format("Global volume {} is out of range", level));
+    sm_log.warning_f("Ignoring request to set volume to {} (expected to be in the range [0, 7])", level);
+  } else {
+    sm.set_global_volume(static_cast<float>(level) / 7.0);
+    sm_log.info_f("Default output volume set to {}", level);
   }
-  sm.set_global_volume(static_cast<float>(level) / 7.0);
-  sm_log.info_f("Default output volume set to {}", level);
   return 0;
 }

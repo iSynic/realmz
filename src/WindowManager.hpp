@@ -68,8 +68,8 @@ public:
   }
 
   void add_dialog_item(std::shared_ptr<DialogItem> item);
-  std::shared_ptr<DialogItem> get_focused_item();
   CCGrafPort& get_port();
+  std::shared_ptr<DialogItem> get_focused_item();
   void set_focused_item(std::shared_ptr<DialogItem> item);
   void handle_text_input(const std::string& text, std::shared_ptr<DialogItem> item);
   void delete_char(std::shared_ptr<DialogItem> item);

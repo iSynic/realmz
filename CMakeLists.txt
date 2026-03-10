@@ -3,17 +3,26 @@ cmake_minimum_required(VERSION 3.27)
 # Build against both ARM and x86_64 architectures for Apple targets. Both executables are packaged
 # together in a so-called "fat" binary. This must be set before the first call to either `project`
 # or `enable_language`.
-set(CACHE{CMAKE_OSX_ARCHITECTURES} "x86_64;arm64")
+if(DISABLE_FAT_BINARY)
+    set(CMAKE_OSX_ARCHITECTURES "arm64")
+else()
+    set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
+endif()
 
 # Lowest version of the MacOS SDK that we can compile our code against, currently.
-set(CACHE{CMAKE_OSX_DEPLOYMENT_TARGET} "13.3")
+set(CMAKE_OSX_DEPLOYMENT_TARGET "13.3")
 
 # Project setup
 project(Realmz
     VERSION 8.1.0
     DESCRIPTION "Classic turn-based RPG from Fantasoft"
-    LANGUAGES C CXX OBJC
+    LANGUAGES C CXX
 )
+# Enable Objective-C only on macOS (needed for MenuController.mm)
+if(APPLE)
+    enable_language(OBJC)
+endif()
+
 set(PROJECT_COPYRIGHT "Realmz Copyright 1994 by Tim Phillips")
 
 set(CMAKE_C_STANDARD 90)
@@ -43,6 +52,9 @@ message(STATUS "CMake found zlib at: ${zlib_DIR}")
 # For cross-compilation to Windows
 if(WIN32)
     link_directories($ENV{HOME}/mingw-install/lib ${CMAKE_CURRENT_BINARY_DIR}/vendored/SDL_ttf/external/freetype)
+    if(DEFINED WINDOWS_ENV)
+        link_directories(${WINDOWS_ENV}/lib)
+    endif()
 endif()
 
 # Dependencies
@@ -325,8 +337,10 @@ target_link_libraries(Realmz
     realmz_lib
 )
 
-target_compile_options(Realmz PRIVATE -fsanitize=address)
-target_link_options(Realmz PRIVATE -fsanitize=address)
+if(NOT WIN32 AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_compile_options(Realmz PRIVATE -fsanitize=address)
+    target_link_options(Realmz PRIVATE -fsanitize=address)
+endif()
 
 set(TEST_EXECUTABLES "GraphicsTest")
 foreach(TEST_EXECUTABLE ${TEST_EXECUTABLES})
@@ -411,7 +425,7 @@ elseif(WIN32)
 
     # The LLVM MinGW toolchain injects a couple of runtime dependencies that we have to install
     # alongside the executable.
-    if(CMAKE_CROSSCOMPILING)
+    if(CMAKE_CROSSCOMPILING AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         find_file(libc++ NAMES libc++.dll PATH_SUFFIXES bin REQUIRED)
         message("Found c++ lib at ${libc++}")
         find_file(libunwind NAMES libunwind.dll PATH_SUFFIXES bin REQUIRED)

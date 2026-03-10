@@ -22,7 +22,7 @@ void updatebootymoney(Rect icon, Rect swapicon) {
    * NOTE(fuzziqersoftware): Originally leftshift was added to the coordinates
    * here, but that seems wrong - it causes the numbers to be rendered outside
    * the window's bounds, which is obviously incorrect. Removing leftshift from
-   * these computations gives the corect behavior. */
+   * these computations gives the correct behavior. */
 
   // MoveTo(goldleft + leftshift, moneytop);
   MoveTo(goldleft, moneytop);

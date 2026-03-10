@@ -886,6 +886,10 @@ backup:
           }
 
         getinfo:
+          // *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+          // The goto that jumps to the getinfo label does not populate r correctly (unlike all other codepaths), so we
+          // need to call GetControlBounds here, or we could end up drawing the equipped-item box in the wrong place.
+          GetControlBounds(theControl, &r);
 
           ploticon3(129, r);
 

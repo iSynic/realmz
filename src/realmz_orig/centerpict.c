@@ -200,41 +200,6 @@ void centerpict(void) {
   icon.right = icon.left + 32;
   icon.bottom = icon.top + 32;
 
-  if (randlevel.isdark) {
-    if (screensize) {
-      copyrect.top = partyy * 32 - 208;
-      copyrect.bottom = copyrect.top + 416;
-      copyrect.left = partyx * 32 - 208;
-      copyrect.right = copyrect.left + 416;
-    } else {
-      copyrect.top = partyy * 32 - 160;
-      copyrect.bottom = copyrect.top + 320;
-      copyrect.left = partyx * 32 - 160;
-      copyrect.right = copyrect.left + 320;
-    }
-
-    SectRect(&lookrect, &copyrect, &copyrect);
-
-    SetRect(&bitrect, 0, 0, 320, 320);
-
-    temp = copyrect.bottom - copyrect.top;
-
-    if (temp < (320 + downshift)) {
-      if (partyy > 6 + (2 * screensize))
-        bitrect.bottom = temp;
-      else
-        bitrect.top = (320 + downshift) - temp;
-    }
-
-    temp = copyrect.right - copyrect.left;
-
-    if (temp < (320 + leftshift)) {
-      if (partyx > (8 + (screensize * 3)))
-        bitrect.right = temp;
-      else
-        bitrect.left = (320 + leftshift) - temp;
-    }
-  }
   iconhand = NIL;
 
   if (charnum > 5)
@@ -280,15 +245,63 @@ void centerpict(void) {
     CopyBits(src, dst, &lookrect, &lookrect, 0, NIL);
     QDFlushPortBuffer(GetWindowPort(look), NULL);
   } else {
-    BitMap* pix = GetPortBitMapForCopyBits(gthePixels);
-    BitMap* buf = GetPortBitMapForCopyBits(gbuff);
-    BitMap* buf2 = GetPortBitMapForCopyBits(gbuff2);
-    BitMap* map = GetPortBitMapForCopyBits(gmaps);
-    BitMap* lookpix = GetPortBitMapForCopyBits(GetWindowPort(look));
 
-    CopyBits(pix, buf2, &tiny[15], &lookrect, 0, NIL);
-    CopyMask(buf, map, buf2, &copyrect, &bitrect, &copyrect);
-    CopyBits(buf2, lookpix, &lookrect, &lookrect, 0, NIL);
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(fuzziqersoftware): The original logic was hard to follow and centered the darkness mask in the wrong place
+     * after the expansion to 800x600, so I've rewritten it.
+     */
+
+    // The upper-left corner of the party icon should be at the center of the darkness mask. That is, the origin of the
+    // rect that we're going to pass to CopyMask should be 160 pixels left and above the party's tile's origin. The
+    // darkness mask is 320x320, so the rect's size is always the same. In the original logic, the darkness mask was
+    // stretched if the screen size is 800x600, but we don't do that - we always reveal the same amount of the
+    // playfield, regardless of the window/screen size.
+    Rect playfield_rect;
+    playfield_rect.left = partyx * 32 - 160;
+    playfield_rect.top = partyy * 32 - 160;
+    playfield_rect.right = playfield_rect.left + 320;
+    playfield_rect.bottom = playfield_rect.top + 320;
+
+    Rect mask_rect = {downshift / 2, leftshift / 2, downshift / 2 + 320, leftshift / 2 + 320};
+
+    // If the playfield rect is out of bounds, clip both rects
+    if (playfield_rect.left < 0) {
+      mask_rect.left -= playfield_rect.left;
+      playfield_rect.left = 0;
+    }
+    if (playfield_rect.top < 0) {
+      mask_rect.top -= playfield_rect.top;
+      playfield_rect.top = 0;
+    }
+    int32_t right_delta = playfield_rect.right - (look->portRect.right - look->portRect.left);
+    int32_t bottom_delta = playfield_rect.bottom - (look->portRect.bottom - look->portRect.top);
+    if (right_delta > 0) {
+      mask_rect.right -= right_delta;
+      playfield_rect.right -= right_delta;
+    }
+    if (bottom_delta > 0) {
+      mask_rect.bottom -= bottom_delta;
+      playfield_rect.bottom -= bottom_delta;
+    }
+
+    BitMap* tiles_buffer = GetPortBitMapForCopyBits(gthePixels);
+    BitMap* playfield_buffer = GetPortBitMapForCopyBits(gbuff); // Rendered playfield (from above)
+    BitMap* temp_buffer = GetPortBitMapForCopyBits(gbuff2); // Temporary buffer
+    BitMap* darkness_mask = GetPortBitMapForCopyBits(gmaps); // Darkness mask
+    BitMap* window_buffer = GetPortBitMapForCopyBits(GetWindowPort(look)); // Window image
+
+    // Clear playfield with black. This copies from tiny[15] in gthePixels; `tiny` is an array of Rects that defines
+    // the dungeon overhead tileset (part of PICT 302, on the right side). `tiny[15]` is simply a 16x16 black square.
+    // TODO: Use PaintRect or something faster than CopyBits here
+    CopyBits(tiles_buffer, temp_buffer, &tiny[15], &lookrect, 0, NIL);
+
+    // Copy the rendered tilemap back into the render buffer through the darkness mask
+    CopyMask(playfield_buffer, darkness_mask, temp_buffer, &playfield_rect, &mask_rect, &playfield_rect);
+
+    // Copy the rendered playfield (render buffer) to the window
+    CopyBits(temp_buffer, window_buffer, &lookrect, &lookrect, 0, NIL);
+
+    /* *** END CHANGES *** */
   }
 
   SetPort((GrafPtr)GetWindowPort(screen));

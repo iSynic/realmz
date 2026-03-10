@@ -17,6 +17,9 @@ static WNDPROC g_OldWndProc = nullptr;
 // the item in the menu)
 static void (*menuCallback)(int16_t, int16_t){};
 
+// Current menu list for keyboard shortcut lookup
+static std::shared_ptr<WinMenuList> current_menu_list;
+
 // Packs the menu id and item id of each submenu item into a single word. When a command menu
 // item is clicked, Windows sends a WM_COMMAND message with the low byte of the wParam filled
 // with the wID property of the MENUITEMINFO struct of the menu. By packing both the Realmz
@@ -32,6 +35,36 @@ std::pair<int16_t, int16_t> UnpackMenuIdentifier(WORD wParam) {
   return {(wParam >> 8) & 0x00FF, wParam & 0x00FF};
 }
 
+// Returns {menu_id, item_id}, or {0, 0} if not found
+std::pair<int16_t, int16_t> FindMenuItemByKeyEquivalent(char ch) {
+  wmc_log.info_f("Looking for menu item with key {:c} ({:02X})", ch, ch);
+  if (!current_menu_list) {
+    wmc_log.info_f("No menus are loaded");
+    return {0, 0};
+  }
+
+  ch = toupper(ch);
+  for (const auto& menu_set : {current_menu_list->menus, current_menu_list->submenus}) {
+    for (const auto& menu : menu_set) {
+      wmc_log.info_f("Looking in menu \"{}\"", menu->title);
+      if (!menu->enabled) {
+        continue;
+      }
+      for (size_t z = 0; z < menu->items.size(); z++) {
+        const auto& item = menu->items[z];
+        wmc_log.info_f("Looking at item \"{}\" -> \"{}\" ({:02X})", menu->title, item.name, item.key_equivalent, ch);
+        if (item.enabled && toupper(item.key_equivalent) == ch) {
+          wmc_log.info_f("Found menu item ID ({}, {})", menu->menu_id, z);
+          return {menu->menu_id, z + 1};
+        }
+      }
+    }
+  }
+
+  wmc_log.info_f("No menu item matched the given key");
+  return {0, 0};
+}
+
 LRESULT CALLBACK RealmzWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   if (msg == WM_COMMAND) {
     if (menuCallback != nullptr) {
@@ -39,6 +72,21 @@ LRESULT CALLBACK RealmzWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
       menuCallback(identifier_pair.first, identifier_pair.second);
     }
     return 0;
+  }
+
+  if ((msg == WM_KEYDOWN) || (msg == WM_SYSKEYDOWN)) {
+    wmc_log.info_f("WM_(SYS)?KEYDOWN: wParam = {:04X}, menuCallback present = {}", wParam, (menuCallback != nullptr));
+  }
+  if (((msg == WM_KEYDOWN) || (msg == WM_SYSKEYDOWN)) && (menuCallback != nullptr) && (GetKeyState(VK_CONTROL) & 0x8000)) {
+    char ch = static_cast<char>(wParam);
+
+    auto menu_item = FindMenuItemByKeyEquivalent(ch);
+    if (menu_item.first != 0) {
+      wmc_log.info_f("Received menu keyboard shortcut: Ctrl+{} -> menu={}, item={}",
+          ch, menu_item.first, menu_item.second);
+      menuCallback(menu_item.first, menu_item.second);
+      return 0;
+    }
   }
 
   // Forward everything else to the original WndProc
@@ -67,6 +115,9 @@ void WinMenuSync(SDL_Window* sdl_window, std::shared_ptr<WinMenuList> menu_list,
   // Update current menu click callback function
   menuCallback = callback;
 
+  // Store the current menu list for keyboard shortcut lookup
+  current_menu_list = menu_list;
+
   auto wind_handle = get_window_handle(sdl_window);
 
   HMENU win_menu = CreateMenu();
@@ -84,14 +135,18 @@ void WinMenuSync(SDL_Window* sdl_window, std::shared_ptr<WinMenuList> menu_list,
       UINT enabled_state = submenu_item.enabled ? MFS_ENABLED : MFS_DISABLED;
       UINT checked_state = submenu_item.checked ? MFS_CHECKED : MFS_UNCHECKED;
 
+      std::string name = submenu_item.name;
+      if (submenu_item.key_equivalent) {
+        name += std::format("\tCtrl+{:c}", toupper(submenu_item.key_equivalent));
+      }
       MENUITEMINFO submenu_info = MENUITEMINFO{
           .cbSize = sizeof(MENUITEMINFO),
           .fMask = MIIM_FTYPE | MIIM_ID | MIIM_STATE | MIIM_STRING,
           .fType = MFT_STRING,
           .fState = enabled_state | checked_state,
           .wID = PackMenuIdentifier(menu->menu_id, i),
-          .dwTypeData = const_cast<char*>(submenu_item.name.c_str()),
-          .cch = static_cast<UINT>(submenu_item.name.length())};
+          .dwTypeData = const_cast<char*>(name.c_str()),
+          .cch = static_cast<UINT>(name.length())};
 
       InsertMenuItem(submenu, i++, TRUE, &submenu_info);
     }

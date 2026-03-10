@@ -133,7 +133,10 @@ short showcondition(short start, short stop, short type, short showonly, short w
   ReleaseResource((Handle)popup);
   temp = c[start].armor[2];
 
-  if ((type) && (itemHit > 1) && (canequip) && !(showonly)) {
+  // *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+  // Originally, this check was simply (type); we changed this to (type == 1) since the logic in the if block only
+  // makes sense for the items menu.
+  if ((type == 1) && (itemHit > 1) && (canequip) && !(showonly)) {
     switch (markresult) {
       case 19:
         if (removeitem(start, itemHit - 2, TRUE, FALSE)) {

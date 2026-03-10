@@ -13,10 +13,13 @@ void reduce(void) {
   if (partycondition[4])
     wizard = TRUE;
 
-  SetRect(&flamerect, 367, 330, 399, 362); /**** L T R B ****/
+  // *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+  // It appears they forgot to add leftshift/downshift here when switching to 800x600. The result of this omission was
+  // that party condition icons wouldn't be erased properly when they expired.
+  SetRect(&flamerect, 367 + leftshift, 330 + downshift, 399 + leftshift, 362 + downshift); /**** L T R B ****/
 
   for (t = 1; t < 10; t++) {
-    if ((partycondition[t] == 1) && (t != 5)) {
+    if ((partycondition[t] == 1) && (t != 5)) { // 5 = Search, which should not be erased because it's a button
       SetPort(GetWindowPort(screen));
       EraseRect(&flamerect);
     }

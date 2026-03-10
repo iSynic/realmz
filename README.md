@@ -36,9 +36,9 @@ On Windows, you can either use the installer wizard for automatic installation, 
 # Cross-compiling for Windows from Mac
 
 - Install [llvm-mingw](https://github.com/mstorsjo/llvm-mingw)
-  - Download latest llvm-mingw-<date>-ucrt-macos-universal.tar.xz
-  - Extract
-  - `sudo mv ~/Downloads/llvm-mingw-<date>-ucrt-macos-universal.tar.xz /opt/llvm-mingw`
+  - Download latest llvm-mingw-$DATE-ucrt-macos-universal.tar.xz
+  - Extract the archive
+  - `sudo mv ~/Downloads/llvm-mingw-$DATE-ucrt-macos-universal /opt/llvm-mingw`
 - Install NSIS for installer generation `brew install nsis`
 - Create a [toolchain file](https://cmake.org/cmake/help/book/mastering-cmake/chapter/Cross%20Compiling%20With%20CMake.html#toolchain-files)
 - Clone and build phosg, resource_dasm, and zlib dependencies and install to ~/mingw-install

@@ -11,24 +11,29 @@ static std::unordered_map<int16_t, ResourceDASM::BitmapFontRenderer>
     bm_renderers_by_id;
 static std::array<std::string, 4> param_text_entries;
 
+TTF_Font* load_ttf_font(const char* mac_filename, size_t font_size) {
+  auto host_filename = host_filename_for_mac_filename(mac_filename, true);
+  auto* ret = TTF_OpenFont(host_filename.c_str(), font_size);
+  if (!ret) {
+    throw std::runtime_error(std::format("Font file {} (host path: {}) is missing",
+        mac_filename, host_filename));
+  }
+  return ret;
+}
+
 void init_fonts() {
-  // Pre-populate Black Chancery, since it doesnt' come from the resource fork.
+  // Pre-populate Black Chancery, since it doesn't come from the resource fork.
   // We can't pre-populate Theldrow because the resource files aren't loaded at
   // the time WindowManager_Init is called.
 
   // TODO: Is 1602 the correct font ID for Black Chancery?
-  auto font_filename =
-      host_filename_for_mac_filename(":Black Chancery.ttf", true);
-  tt_fonts_by_id[BLACK_CHANCERY_FONT_ID] =
-      TTF_OpenFont(font_filename.c_str(), 16);
+  tt_fonts_by_id[BLACK_CHANCERY_FONT_ID] = load_ttf_font(":Black Chancery.ttf", 16);
   // Since Geneva itself is still copyrighted, we use the open Inter font instead.
-  font_filename = host_filename_for_mac_filename(":InterVariable.ttf", true);
-  auto geneva_font = TTF_OpenFont(font_filename.c_str(), 16);
+  auto geneva_font = load_ttf_font(":InterVariable.ttf", 16);
   tt_fonts_by_id[GENEVA_FONT_ID] = geneva_font;
   tt_fonts_by_id[ALTERNATIVE_GENEVA_FONT_ID] = geneva_font;
   tt_fonts_by_id[REALMZ_GENEVA_FONT_ID] = geneva_font;
-  font_filename = host_filename_for_mac_filename(":ChicagoFLF.ttf", true);
-  tt_fonts_by_id[CHICAGO_FONT_ID] = TTF_OpenFont(font_filename.c_str(), 16);
+  tt_fonts_by_id[CHICAGO_FONT_ID] = load_ttf_font(":ChicagoFLF.ttf", 16);
 }
 
 // Tries to load a TrueType font first; if it's not available, use a
