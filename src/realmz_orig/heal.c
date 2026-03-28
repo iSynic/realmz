@@ -15,7 +15,7 @@ void heal(short who, short howmuch, short show) {
     spelleffect(who, 0);
   }
 
-  if (c[who].condition[26])
+  if (c[who].condition[COND_TURNED_TO_STONE])
     return;
 
   if (c[who].stamina < 1)

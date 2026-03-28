@@ -24,18 +24,18 @@ void updatecharinfo(void) {
   DialogNum(10, c[charselectnew].lu + c[charselectnew].maglu);
 
   temp = 0;
-  if (characterl.condition[21])
+  if (characterl.condition[COND_STRONG])
     temp += 15; /**** strong ***/
-  if (characterl.condition[6])
+  if (characterl.condition[COND_SLOW])
     temp -= 15; /**** slow ***/
-  if (characterl.condition[4])
+  if (characterl.condition[COND_MAGIC_AURA])
     temp += 5; /**** bless ***/
-  if (characterl.condition[3])
+  if (characterl.condition[COND_CURSED])
     temp -= 5; /**** curse ***/
-  if (characterl.condition[2])
-    temp -= characterl.condition[2]; /*** tangled ***/
-  if (characterl.condition[36])
-    temp -= characterl.condition[36]; /*** Hinder atk ***/
+  if (characterl.condition[COND_TANGLED])
+    temp -= characterl.condition[COND_TANGLED]; /*** tangled ***/
+  if (characterl.condition[COND_HINDERED_ATTACKS])
+    temp -= characterl.condition[COND_HINDERED_ATTACKS]; /*** Hinder atk ***/
   temp += (characterl.damage * 5); /*** Hinder atk ***/
   if (temp > 99)
     TextSize(16);
@@ -43,18 +43,18 @@ void updatecharinfo(void) {
   TextSize(20);
 
   temp = 0;
-  if (characterl.condition[24])
+  if (characterl.condition[COND_INVISIBLE])
     temp += 10; /*** invisible ***/
-  if (characterl.condition[6])
+  if (characterl.condition[COND_SLOW])
     temp -= 15; /*** slow ***/
-  if (characterl.condition[4])
+  if (characterl.condition[COND_MAGIC_AURA])
     temp += 5; /*** bless ***/
-  if (characterl.condition[3])
+  if (characterl.condition[COND_CURSED])
     temp -= 5; /*** curse ***/
-  if (characterl.condition[37])
-    temp -= characterl.condition[37]; /*** hinder defense ***/
-  if (characterl.condition[38])
-    temp += characterl.condition[38]; /*** defense bonus ***/
+  if (characterl.condition[COND_HINDERED_DEFENSE])
+    temp -= characterl.condition[COND_HINDERED_DEFENSE]; /*** hinder defense ***/
+  if (characterl.condition[COND_DEFENSE_BONUS])
+    temp += characterl.condition[COND_DEFENSE_BONUS]; /*** defense bonus ***/
   temp += characterl.ac; /*** Hinder atk ***/
   if (temp > 99)
     TextSize(16);

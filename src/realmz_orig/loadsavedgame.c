@@ -469,11 +469,11 @@ short load(void) {
 
   killparty = 0;
   for (t = 0; t <= charnum; t++)
-    if ((c[t].stamina < 1) || (c[t].condition[25]))
+    if ((c[t].stamina < 1) || (c[t].condition[COND_ANIMATED]))
       killparty++;
 
-  if (partycondition[0])
-    loaddark((partycondition[0] / 30) + 1);
+  if (partycondition[PARTY_COND_TORCH_LIT])
+    loaddark((partycondition[PARTY_COND_TORCH_LIT] / 30) + 1);
   else
     loaddark(0);
 

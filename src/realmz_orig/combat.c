@@ -124,8 +124,8 @@ void combat(short suprise, short mode) {
       didcast = FALSE;
       monster[monsterup].guarding = TRUE;
 
-      // if (monster[monsterup].condition[0]) goto startmove;/**** start retreat ***/
-      if (monster[monsterup].condition[0])
+      // if (monster[monsterup]condition[COND_RUNS_AWAY]) goto startmove;/**** start retreat ***/
+      if (monster[monsterup].condition[COND_RUNS_AWAY])
         goto startretreat; /**** start retreat ***/
 
       if (Rand(100) <= monster[monsterup].misslepercent) {
@@ -141,7 +141,7 @@ void combat(short suprise, short mode) {
       if (Rand(100) <= monster[monsterup].castpercent) {
       tryspell:
 
-        if ((!monster[monsterup].condition[5]) && (!monster[monsterup].condition[29]) && (!monster[monsterup].condition[39]) && (!monster[monsterup].condition[1]) && (monstercasting == 0)) {
+        if ((!monster[monsterup].condition[COND_STUPID]) && (!monster[monsterup].condition[COND_CONFUSED]) && (!monster[monsterup].condition[COND_SILENCED]) && (!monster[monsterup].condition[COND_HELPLESS]) && (monstercasting == 0)) {
           if (!monster[monsterup].beenattacked) {
 
             for (spellloop = 0; spellloop < monster[monsterup].noofmagattacks; spellloop++) {
@@ -382,7 +382,7 @@ void combat(short suprise, short mode) {
           goto startmove;
       }
 
-      if (!monster[monsterup].condition[1])
+      if (!monster[monsterup].condition[COND_HELPLESS])
         checkforenemy(0);
 
     startmove:
@@ -392,7 +392,7 @@ void combat(short suprise, short mode) {
       if ((numenemy - killmon) <= 0)
         goto monsterdone;
 
-      while ((monster[monsterup].movement > 0) && (monster[monsterup].attacknum < (monster[monsterup].noofattacks + monster[monsterup].bonusattack)) && (!monster[monsterup].condition[1])) {
+      while ((monster[monsterup].movement > 0) && (monster[monsterup].attacknum < (monster[monsterup].noofattacks + monster[monsterup].bonusattack)) && (!monster[monsterup].condition[COND_HELPLESS])) {
         if ((numenemy - killmon) <= 0)
           goto monsterdone;
 
@@ -483,7 +483,7 @@ void combat(short suprise, short mode) {
             nospell += 2;
             monster[monsterup].movement = 0;
             if (!monster[monsterup].beenattacked) {
-              if ((monster[monsterup].condition[5]) || (monster[monsterup].condition[29]) || (monster[monsterup].condition[39]) || (monster[monsterup].condition[1]))
+              if ((monster[monsterup].condition[COND_STUPID]) || (monster[monsterup].condition[COND_CONFUSED]) || (monster[monsterup].condition[COND_SILENCED]) || (monster[monsterup].condition[COND_HELPLESS]))
                 goto monsterdone;
               goto tryspell;
             }
@@ -491,13 +491,13 @@ void combat(short suprise, short mode) {
           goto monsterdone;
         }
 
-        if (monster[monsterup].condition[1])
+        if (monster[monsterup].condition[COND_HELPLESS])
           goto monsterdone;
         checkforenemy(0);
         combatupdate(q[up]);
       }
 
-      if (monster[monsterup].condition[0])
+      if (monster[monsterup].condition[COND_RUNS_AWAY])
         checkforenemy(0); /***** done retreating ***/
       if ((nospell < 2) && (monster[monsterup].castpercent) && (!didattack)) {
         nospell = 2;
@@ -510,11 +510,11 @@ void combat(short suprise, short mode) {
       getup(FALSE);
     }
 
-    if (((poss) || (c[charup].condition[25])) && (q[up] < 9))
+    if (((poss) || (c[charup].condition[COND_ANIMATED])) && (q[up] < 9))
       goto jumpposs;
 
     if ((q[up] < 9) && (q[up] > -1)) {
-      if ((doauto[q[up]]) && (!c[q[up]].condition[0]) && (!c[q[up]].condition[26]) && (c[q[up]].stamina > 0) && (c[q[up]].inbattle)) {
+      if ((doauto[q[up]]) && (!c[q[up]].condition[COND_RUNS_AWAY]) && (!c[q[up]].condition[COND_TURNED_TO_STONE]) && (c[q[up]].stamina > 0) && (c[q[up]].inbattle)) {
         if (Button()) {
           doauto[q[up]] = FALSE;
           GetControlBounds(autoone[q[up]], &buttonrect);
@@ -523,7 +523,7 @@ void combat(short suprise, short mode) {
           upbutton(TRUE);
         } else {
           poss = TRUE;
-          c[q[up]].condition[25] = 1;
+          c[q[up]].condition[COND_ANIMATED] = 1;
         }
       }
     }
@@ -678,7 +678,7 @@ void combat(short suprise, short mode) {
                 downbutton(TRUE);
 
                 if (canundo) {
-                  if ((!c[charup].condition[1]) && (!c[charup].traiter) && (!c[charup].condition[29])) {
+                  if ((!c[charup].condition[COND_HELPLESS]) && (!c[charup].traiter) && (!c[charup].condition[COND_CONFUSED])) {
                     sound(664);
                     c[charup].attacks -= (c[charup].normattacks + c[charup].attackbonus);
                     drawbody(charup, TRUE, 0);
@@ -711,7 +711,7 @@ void combat(short suprise, short mode) {
                   warn(81);
                   upbutton(TRUE);
                 } else {
-                  if ((c[charup].condition[1]) || (c[charup].traiter) || (c[charup].condition[29]) || (c[charup].condition[2]) || (c[charup].condition[6])) { /***** bad condition ****/
+                  if ((c[charup].condition[COND_HELPLESS]) || (c[charup].traiter) || (c[charup].condition[COND_CONFUSED]) || (c[charup].condition[COND_TANGLED]) || (c[charup].condition[COND_SLOW])) { /***** bad condition ****/
                     warn(83);
                     upbutton(TRUE);
                   } else if (question3((StringPtr) "Embrace Cowardice", (StringPtr) "Stay and Fight") == 2) /**** ask if they want to flee from battle ****/

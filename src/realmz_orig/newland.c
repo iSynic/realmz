@@ -294,7 +294,7 @@ startover:
         if (killparty > charnum) {
           for (loop = 0; loop <= charnum; loop++) {
             c[loop].stamina = 1;
-            c[loop].condition[25] = 0;
+            c[loop].condition[COND_ANIMATED] = 0;
             killparty = 0;
           }
           return (-1);
@@ -406,11 +406,11 @@ startover:
                 if (monsternameid[tt] == extracode[ttt]) {
                   if (!doingque) {
                     if (monster[tt].traiter == monster[macromonster].traiter) {
-                      monster[tt].condition[0] = -1;
+                      monster[tt].condition[COND_RUNS_AWAY] = -1;
                       monster[tt].surrenderpercent = 50;
                     }
                   } else if (monster[tt].traiter == todoque[abs(data) - 1].traiter) {
-                    monster[tt].condition[0] = -1;
+                    monster[tt].condition[COND_RUNS_AWAY] = -1;
                     monster[tt].surrenderpercent = 50;
                   }
                 }
@@ -1477,7 +1477,7 @@ startover:
           if (killparty > charnum) {
             for (loop = 0; loop <= charnum; loop++) {
               c[loop].stamina = 1;
-              c[loop].condition[25] = 0;
+              c[loop].condition[COND_ANIMATED] = 0;
               killparty = 0;
             }
           }
@@ -3019,7 +3019,7 @@ startover:
           case 2: // check all alive
 
             for (tt = 0; tt <= charnum; tt++) {
-              if ((c[tt].stamina > 0) && (!c[tt].condition[25])) {
+              if ((c[tt].stamina > 0) && (!c[tt].condition[COND_ANIMATED])) {
                 if (c[tt].spellpoints >= extracode[1])
                   smallreply = TRUE;
               }

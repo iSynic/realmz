@@ -106,9 +106,9 @@ void updatechar(short who, short mode) {
   } else {
     MoveTo(598 + leftshift - (leftshift * forcesmallshift), ydist);
     temp = c[who].normattacks + c[who].attackbonus;
-    if (c[who].condition[23])
+    if (c[who].condition[COND_SPEEDY])
       temp *= 2;
-    if (c[who].condition[6])
+    if (c[who].condition[COND_SLOW])
       temp /= 2;
     switch (temp) {
       case 0:

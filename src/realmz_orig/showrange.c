@@ -39,7 +39,7 @@ void showrange(short edgemode) {
       ForeColor(redColor);
       if (!monster[t].traiter)
         RGBForeColor(&greencolor);
-      if (monster[t].condition[1])
+      if (monster[t].condition[COND_HELPLESS])
         ForeColor(blueColor);
       MoveTo(x, y);
       LineTo(x1, y1);
@@ -51,7 +51,7 @@ void showrange(short edgemode) {
       RGBForeColor(&greencolor);
       if (c[t].traiter)
         ForeColor(redColor);
-      if (c[t].condition[1])
+      if (c[t].condition[COND_HELPLESS])
         ForeColor(blueColor);
       MoveTo(x, y);
       LineTo(32 * pos[t][0] + 16, 32 * pos[t][1] + 16);

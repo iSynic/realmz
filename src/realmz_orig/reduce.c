@@ -8,9 +8,9 @@ void reduce(void) {
   Boolean wizard = FALSE;
   Rect flamerect;
 
-  if (partycondition[0] == 1)
+  if (partycondition[PARTY_COND_TORCH_LIT] == 1)
     tag = TRUE;
-  if (partycondition[4])
+  if (partycondition[PARTY_COND_WIZARD_EYE])
     wizard = TRUE;
 
   // *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
@@ -32,12 +32,11 @@ void reduce(void) {
     if (partycondition[t] > 0)
       partycondition[t]--;
 
-  if (partycondition[0] > 0)
-    partycondition[0]--;
+  if (partycondition[PARTY_COND_TORCH_LIT] > 0)
+    partycondition[PARTY_COND_TORCH_LIT]--;
 
   if (!incombat) {
-    if ((!partycondition[4]) && (wizard)) /**** wizard eye *****/
-    {
+    if ((!partycondition[PARTY_COND_WIZARD_EYE]) && (wizard)) {
       if ((!multiview) && (indung)) {
         warn(95);
         viewtype = 1;
@@ -45,8 +44,8 @@ void reduce(void) {
       }
     }
 
-    if (partycondition[0] / 30 != (partycondition[0] + 1) / 30) {
-      loaddark(partycondition[0] / 30 + 1);
+    if (partycondition[PARTY_COND_TORCH_LIT] / 30 != (partycondition[PARTY_COND_TORCH_LIT] + 1) / 30) {
+      loaddark(partycondition[PARTY_COND_TORCH_LIT] / 30 + 1);
       centerpict();
     } else if (tag) {
       loaddark(0);
@@ -56,10 +55,10 @@ void reduce(void) {
   }
 
   for (t = 0; t <= charnum; t++) {
-    if ((c[t].condition[10]) && (c[t].stamina > -10) && (c[t].stamina < c[t].staminamax) && (!c[t].condition[25])) /***** Regenerate ****/
+    if ((c[t].condition[COND_REGENERATING]) && (c[t].stamina > -10) && (c[t].stamina < c[t].staminamax) && (!c[t].condition[COND_ANIMATED])) /***** Regenerate ****/
     {
       if (((incombat) && (c[t].stamina > 0)) || (!incombat)) {
-        damage = abs(c[t].condition[10]);
+        damage = abs(c[t].condition[COND_REGENERATING]);
         heal(t, damage, FALSE);
         regenerate = TRUE;
         if ((damage) && (incombat) && (c[t].inbattle))
@@ -70,9 +69,9 @@ void reduce(void) {
       }
     }
 
-    if ((c[t].condition[28]) && (c[t].stamina > 0) && (c[t].condition[25] > -1)) /***** disease ****/
+    if ((c[t].condition[COND_DISEASED]) && (c[t].stamina > 0) && (c[t].condition[COND_ANIMATED] > -1)) /***** disease ****/
     {
-      damage = abs(c[t].condition[28]);
+      damage = abs(c[t].condition[COND_DISEASED]);
       c[t].stamina -= damage;
       spellinfo.spelllook2 = 7;
       if (c[t].stamina < 1) {
@@ -84,10 +83,10 @@ void reduce(void) {
         updatecharshort(t, FALSE);
     }
 
-    if ((c[t].condition[9]) && (c[t].stamina > 0) && (c[t].condition[25] > -1)) /***** poison ****/
+    if ((c[t].condition[COND_POISONED]) && (c[t].stamina > 0) && (c[t].condition[COND_ANIMATED] > -1)) /***** poison ****/
     {
       spellinfo.spelllook2 = 7;
-      damage = abs(c[t].condition[9]);
+      damage = abs(c[t].condition[COND_POISONED]);
       c[t].stamina -= damage;
       poisoned = TRUE;
       if (c[t].stamina < 1) {
@@ -100,23 +99,23 @@ void reduce(void) {
       poisoned = FALSE;
     }
 
-    if ((c[t].condition[34]) && (c[t].stamina > 0)) /****** power suck *******/
+    if ((c[t].condition[COND_ENERGY_DRAIN]) && (c[t].stamina > 0)) /****** power suck *******/
     {
-      c[t].spellpoints -= abs(c[t].condition[34]);
+      c[t].spellpoints -= abs(c[t].condition[COND_ENERGY_DRAIN]);
       if (c[t].spellpoints < 0)
         c[t].spellpoints = 0;
       updatecharshort(t, FALSE);
     }
 
-    if ((c[t].condition[33]) && (c[t].spellpointsmax) && (c[t].stamina > 0)) /******* power absorbe ********/
+    if ((c[t].condition[COND_ABSORBING_ENERGY]) && (c[t].spellpointsmax) && (c[t].stamina > 0)) /******* power absorbe ********/
     {
-      c[t].spellpoints += abs(c[t].condition[33]);
+      c[t].spellpoints += abs(c[t].condition[COND_ABSORBING_ENERGY]);
       if (c[t].spellpoints > c[t].spellpointsmax)
         c[t].spellpoints = c[t].spellpointsmax;
       updatecharshort(t, FALSE);
     }
 
-    if (c[t].condition[29]) {
+    if (c[t].condition[COND_CONFUSED]) {
       if (c[t].traiter) {
         c[t].traiter = 0;
         killparty--;

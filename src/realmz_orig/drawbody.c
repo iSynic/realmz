@@ -23,7 +23,7 @@ void drawbody(short body, short force, short where) /***** 0 = look, 1 = buff **
   if (body > 9) {
     if (monster[body - 10].stamina < 1)
       return;
-    if (monster[body - 10].condition[1])
+    if (monster[body - 10].condition[COND_HELPLESS])
       helpless = TRUE;
 
     size = monster[body - 10].size;
@@ -40,7 +40,7 @@ void drawbody(short body, short force, short where) /***** 0 = look, 1 = buff **
   } else {
     if (c[body].stamina < 1)
       return;
-    if (c[body].condition[1])
+    if (c[body].condition[COND_HELPLESS])
       helpless = TRUE;
 
     iconhand = GetCIcon(c[body].iconid + (500 * c[body].face));

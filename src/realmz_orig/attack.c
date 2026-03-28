@@ -45,7 +45,7 @@ short attack(short chare, short mon) {
     if (item.sp2 > 1100) {
       loadspell2(item.sp2);
       if (spellinfo.damagetype == 9) {
-        if (character.condition[25]) {
+        if (character.condition[COND_ANIMATED]) {
           if (character.handtohand < 8) {
             if (toweap(chare)) {
               character = c[chare];
@@ -94,23 +94,23 @@ short attack(short chare, short mon) {
 
 moveon:
   att += (50 + character.tohit + 20 * behind);
-  if (character.condition[2])
-    att -= abs(character.condition[2]); /*** tangled ***/
-  if (character.condition[21])
+  if (character.condition[COND_TANGLED])
+    att -= abs(character.condition[COND_TANGLED]); /*** tangled ***/
+  if (character.condition[COND_STRONG])
     att += 15; /**** strong ***/
-  if (character.condition[6])
+  if (character.condition[COND_SLOW])
     att -= 15; /**** slow ***/
-  if (character.condition[29])
+  if (character.condition[COND_CONFUSED])
     att -= 10; /**** confused ***/
-  if (character.condition[27])
+  if (character.condition[COND_BLIND])
     att -= 15; /**** blind ***/
-  if (character.condition[4])
+  if (character.condition[COND_MAGIC_AURA])
     att += 5; /**** bless ***/
-  if (character.condition[3])
+  if (character.condition[COND_CURSED])
     att -= 5; /**** curse ***/
-  if (character.condition[36])
-    att -= abs(character.condition[36]); /*** Hinder atk ***/
-  if (monst.type[4] && character.condition[22])
+  if (character.condition[COND_HINDERED_ATTACKS])
+    att -= abs(character.condition[COND_HINDERED_ATTACKS]); /*** Hinder atk ***/
+  if (monst.type[4] && character.condition[COND_PROTECTION_FROM_EVIL])
     att += 10; /*** +10% for pro evil ***/
   att += Rand(character.lu + character.maglu); /*** luck ***/
 
@@ -127,49 +127,49 @@ moveon:
 
   if (mon > 9) {
     att -= monst.ac;
-    att -= 2 * abs(monst.condition[7]); /*** shield ***/
-    if (monst.condition[29])
+    att -= 2 * abs(monst.condition[COND_SHIELD_FROM_HITS]); /*** shield ***/
+    if (monst.condition[COND_CONFUSED])
       att += 10; /*** confused enemy ***/
-    if (monst.condition[27])
+    if (monst.condition[COND_BLIND])
       att += 15; /*** blind enemy ***/
-    if (monst.condition[6])
+    if (monst.condition[COND_SLOW])
       att += 15; /*** slow enemy ***/
-    if (monst.condition[4])
+    if (monst.condition[COND_MAGIC_AURA])
       att -= 5; /*** blessed enemy ***/
-    if (monst.condition[3])
+    if (monst.condition[COND_CURSED])
       att += 5; /*** cursed enemy ***/
-    if (monst.condition[24])
+    if (monst.condition[COND_INVISIBLE])
       att -= 10; /*** invisible enemy ***/
-    if (monst.condition[2])
-      att += abs(monst.condition[2]); /*** tangled ***/
-    if (monst.condition[37])
-      att += abs(monst.condition[37]); /*** hinter defense ***/
-    if (monst.condition[38])
-      att -= abs(monst.condition[38]); /*** defense bonus ***/
-    if (monst.condition[22])
+    if (monst.condition[COND_TANGLED])
+      att += abs(monst.condition[COND_TANGLED]); /*** tangled ***/
+    if (monst.condition[COND_HINDERED_DEFENSE])
+      att += abs(monst.condition[COND_HINDERED_DEFENSE]); /*** hinter defense ***/
+    if (monst.condition[COND_DEFENSE_BONUS])
+      att -= abs(monst.condition[COND_DEFENSE_BONUS]); /*** defense bonus ***/
+    if (monst.condition[COND_PROTECTION_FROM_EVIL])
       att -= 10; /*** pro evil enemy***/
     att -= tyme.tm_yday / 120; /****** time bonus ****/
   } else {
     att -= c[mon].ac;
-    att -= 2 * abs(c[mon].condition[7]); /*** shield ***/
-    if (c[mon].condition[29])
+    att -= 2 * abs(c[mon].condition[COND_SHIELD_FROM_HITS]); /*** shield ***/
+    if (c[mon].condition[COND_CONFUSED])
       att += 10; /*** confused MAN ***/
-    if (c[mon].condition[27])
+    if (c[mon].condition[COND_BLIND])
       att += 15; /*** blind MAN ***/
-    if (c[mon].condition[6])
+    if (c[mon].condition[COND_SLOW])
       att += 15; /*** slow MAN ***/
-    if (c[mon].condition[4])
+    if (c[mon].condition[COND_MAGIC_AURA])
       att -= 5; /*** blessed MAN ***/
-    if (c[mon].condition[3])
+    if (c[mon].condition[COND_CURSED])
       att += 5; /*** cursed MAN ***/
-    if (c[mon].condition[24])
+    if (c[mon].condition[COND_INVISIBLE])
       att -= 10; /*** invisible MAN ***/
-    if (c[mon].condition[2])
-      att += abs(c[mon].condition[2]); /*** tangled ***/
-    if (c[mon].condition[37])
-      att += abs(c[mon].condition[37]); /*** hinder defense ***/
-    if (c[mon].condition[38])
-      att -= abs(c[mon].condition[38]); /*** defense bonus ***/
+    if (c[mon].condition[COND_TANGLED])
+      att += abs(c[mon].condition[COND_TANGLED]); /*** tangled ***/
+    if (c[mon].condition[COND_HINDERED_DEFENSE])
+      att += abs(c[mon].condition[COND_HINDERED_DEFENSE]); /*** hinder defense ***/
+    if (c[mon].condition[COND_DEFENSE_BONUS])
+      att -= abs(c[mon].condition[COND_DEFENSE_BONUS]); /*** defense bonus ***/
   }
 
   /***SetPort(look);
@@ -186,9 +186,9 @@ moveon:
     success = TRUE;
 
   if (mon > 9) {
-    if (monst.condition[1])
+    if (monst.condition[COND_HELPLESS])
       success = TRUE;
-  } else if (c[mon].condition[1])
+  } else if (c[mon].condition[COND_HELPLESS])
     success = TRUE;
 
   if (allowfumble) {
@@ -222,8 +222,8 @@ donefumble:
       success = damage = FALSE; /******* need higher + weapon to Hit ****/
       showresults(mon, -15, chare);
     restorecontrol:
-      if (c[chare].condition[25] == 1)
-        c[chare].condition[25] = poss = 0;
+      if (c[chare].condition[COND_ANIMATED] == 1)
+        c[chare].condition[COND_ANIMATED] = poss = 0;
       GetControlBounds(campbut, &r);
       ploticon3(129, r);
       sound(141);
@@ -265,14 +265,14 @@ donefumble:
     success = TRUE; /********* auto hit weapon ************/
 
   if (success) {
-    if ((mon > 9) && (monst.condition[31]) && (Rand(100) < 34))
+    if ((mon > 9) && (monst.condition[COND_REFLECTING_ATTACKS]) && (Rand(100) < 34))
       mon = chare;
     else if (mon < 9) {
-      if ((c[mon].condition[31]) && (Rand(100) < 34))
+      if ((c[mon].condition[COND_REFLECTING_ATTACKS]) && (Rand(100) < 34))
         mon = chare;
     }
 
-    if (character.condition[21])
+    if (character.condition[COND_STRONG])
       damage += 3; /****** strong *****/
     if (!character.armor[2])
       damage += Rand(character.handtohand);
@@ -283,7 +283,7 @@ donefumble:
 
         if ((item.heat) && (!monst.spellimmune[1])) {
           specdamage = Rand(item.heat);
-          if (monst.condition[11])
+          if (monst.condition[COND_FIRE_PROTECTION])
             specdamage /= 2;
           if (savevs(1, chare))
             specdamage /= 2;
@@ -294,7 +294,7 @@ donefumble:
 
         if ((item.cold) && (!monst.spellimmune[2])) {
           specdamage = Rand(item.cold);
-          if (monst.condition[12])
+          if (monst.condition[COND_COLD_PROTECTION])
             specdamage /= 2;
           if (savevs(2, chare))
             specdamage /= 2;
@@ -304,7 +304,7 @@ donefumble:
         }
         if ((item.electric) && (!monst.spellimmune[3])) {
           specdamage = Rand(item.electric);
-          if (monst.condition[13])
+          if (monst.condition[COND_ELECTRICAL_PROTECTION])
             specdamage /= 2;
           if (savevs(3, chare))
             specdamage /= 2;
@@ -325,7 +325,7 @@ donefumble:
           specdamage = Rand(item.heat);
           if (savevs(1, mon))
             specdamage /= 2;
-          if (c[mon].condition[11])
+          if (c[mon].condition[COND_FIRE_PROTECTION])
             specdamage /= 2;
           specialdam += specdamage;
           if (specdamage)
@@ -333,7 +333,7 @@ donefumble:
         }
         if (item.cold) {
           specdamage = Rand(item.cold);
-          if (c[mon].condition[12])
+          if (c[mon].condition[COND_COLD_PROTECTION])
             specdamage /= 2;
           if (savevs(2, mon))
             specdamage /= 2;
@@ -343,7 +343,7 @@ donefumble:
         }
         if (item.electric) {
           specdamage = Rand(item.electric);
-          if (c[mon].condition[13])
+          if (c[mon].condition[COND_ELECTRICAL_PROTECTION])
             specdamage /= 2;
           if (savevs(3, mon))
             specdamage /= 2;
@@ -356,7 +356,7 @@ donefumble:
     }
 
     damage += character.damage;
-    damage += character.condition[32]; /***** attack bonus ****/
+    damage += character.condition[COND_ATTACK_BONUS]; /***** attack bonus ****/
 
     if (Rand(100) <= character.spec[0]) {
       damage *= 3;
@@ -379,7 +379,7 @@ donefumble:
         showresults(mon, -40, chare);
       }
 
-      if (monst.condition[1])
+      if (monst.condition[COND_HELPLESS])
         damage = monst.stamina;
       monster[mon - 10].beenattacked = TRUE;
       monster[mon - 10].stamina -= (damage + specialdam);
@@ -401,7 +401,7 @@ donefumble:
         showresults(mon, -40, chare);
       }
 
-      if (c[mon].condition[1])
+      if (c[mon].condition[COND_HELPLESS])
         damage = c[mon].stamina;
       c[mon].beenattacked = TRUE;
       c[mon].stamina -= (damage + specialdam);
@@ -492,24 +492,24 @@ trynewweapon:
     item.blunt = 0; /***** erase blunt/sharp if not using a weapon ***/
 
   att += 50 + (5 * monst.hd) + (5 * monst.damplus) + 20 * behind;
-  if (monst.condition[29])
+  if (monst.condition[COND_CONFUSED])
     att -= 10; /*** confused ***/
-  if (monst.condition[27])
+  if (monst.condition[COND_BLIND])
     att -= 15; /*** blind ***/
-  if (monst.condition[22])
+  if (monst.condition[COND_PROTECTION_FROM_EVIL])
     att += 10; /*** pro evil ***/
-  if (monst.condition[21])
+  if (monst.condition[COND_STRONG])
     att += 15; /*** strong ***/
-  if (monst.condition[2])
-    att -= abs(monst.condition[2]); /*** tangle ***/
-  if (monst.condition[4])
+  if (monst.condition[COND_TANGLED])
+    att -= abs(monst.condition[COND_TANGLED]); /*** tangle ***/
+  if (monst.condition[COND_MAGIC_AURA])
     att += 5; /*** bless ***/
-  if (monst.condition[3])
+  if (monst.condition[COND_CURSED])
     att -= 5; /*** curse ***/
-  if (monst.condition[6])
+  if (monst.condition[COND_SLOW])
     att -= 15; /*** slow ***/
-  if (monst.condition[36])
-    att -= abs(monst.condition[36]); /*** hinder attack ***/
+  if (monst.condition[COND_HINDERED_ATTACKS])
+    att -= abs(monst.condition[COND_HINDERED_ATTACKS]); /*** hinder attack ***/
   att += tyme.tm_yday / 70; /****** time bonus ****/
 
   if (chare < 9) {
@@ -523,28 +523,28 @@ trynewweapon:
       drawbody(mon, 0, 0);
     }
 
-    if (character.condition[24])
+    if (character.condition[COND_INVISIBLE])
       att -= 10; /*** invisible ***/
-    if (character.condition[6])
+    if (character.condition[COND_SLOW])
       att += 15; /*** slow ***/
-    if (character.condition[4])
+    if (character.condition[COND_MAGIC_AURA])
       att -= 5; /*** bless ***/
-    if (character.condition[27])
+    if (character.condition[COND_BLIND])
       att += 15; /*** blind ***/
-    if (character.condition[29])
+    if (character.condition[COND_CONFUSED])
       att += 10; /*** confused ***/
-    if (character.condition[3])
+    if (character.condition[COND_CURSED])
       att += 5; /*** curse ***/
-    if (character.condition[2])
-      att += abs(character.condition[2]); /*** tangle ***/
-    if (character.condition[37])
-      att += abs(character.condition[37]); /*** hinder defense ***/
-    if (character.condition[38])
-      att -= abs(character.condition[38]); /*** defense bonus ***/
+    if (character.condition[COND_TANGLED])
+      att += abs(character.condition[COND_TANGLED]); /*** tangle ***/
+    if (character.condition[COND_HINDERED_DEFENSE])
+      att += abs(character.condition[COND_HINDERED_DEFENSE]); /*** hinder defense ***/
+    if (character.condition[COND_DEFENSE_BONUS])
+      att -= abs(character.condition[COND_DEFENSE_BONUS]); /*** defense bonus ***/
     att -= Rand(character.lu + character.maglu); /*** luck ***/
     att -= character.ac;
-    att -= 2 * abs(character.condition[7]); /*** shield ***/
-    if (monst.type[4] && character.condition[22])
+    att -= 2 * abs(character.condition[COND_SHIELD_FROM_HITS]); /*** shield ***/
+    if (monst.type[4] && character.condition[COND_PROTECTION_FROM_EVIL])
       att -= 10; /*** +10% for pro evil ***/
   } else {
     if ((monpos[chare - 10][0] > monpos[mon - 10][0]) && (monst.lr == 0)) {
@@ -557,27 +557,27 @@ trynewweapon:
       drawbody(mon, 0, 0);
     }
 
-    if (monster[chare - 10].condition[6])
+    if (monster[chare - 10].condition[COND_SLOW])
       att += 15; /*** slow ***/
-    if (monster[chare - 10].condition[4])
+    if (monster[chare - 10].condition[COND_MAGIC_AURA])
       att -= 5; /*** bless ***/
-    if (monster[chare - 10].condition[3])
+    if (monster[chare - 10].condition[COND_CURSED])
       att += 5; /*** curse ***/
-    if (monster[chare - 10].condition[27])
+    if (monster[chare - 10].condition[COND_BLIND])
       att += 15; /*** blind ***/
-    if (monster[chare - 10].condition[29])
+    if (monster[chare - 10].condition[COND_CONFUSED])
       att += 10; /*** confused ***/
-    if (monster[chare - 10].condition[24])
+    if (monster[chare - 10].condition[COND_INVISIBLE])
       att -= 10; /*** invisible ***/
-    if (monster[chare - 10].condition[2])
-      att += abs(monster[chare - 10].condition[2]); /*** tangle ***/
-    if (monster[chare - 10].condition[37])
-      att += abs(monster[chare - 10].condition[37]); /*** hinder defense ***/
-    if (monster[chare - 10].condition[38])
-      att -= abs(monster[chare - 10].condition[38]); /*** defense bonus ***/
+    if (monster[chare - 10].condition[COND_TANGLED])
+      att += abs(monster[chare - 10].condition[COND_TANGLED]); /*** tangle ***/
+    if (monster[chare - 10].condition[COND_HINDERED_DEFENSE])
+      att += abs(monster[chare - 10].condition[COND_HINDERED_DEFENSE]); /*** hinder defense ***/
+    if (monster[chare - 10].condition[COND_DEFENSE_BONUS])
+      att -= abs(monster[chare - 10].condition[COND_DEFENSE_BONUS]); /*** defense bonus ***/
     att -= monster[chare - 10].ac;
-    att -= 2 * abs(monster[chare - 10].condition[7]); /*** shield ***/
-    if (monst.type[4] && monster[chare - 10].condition[22])
+    att -= 2 * abs(monster[chare - 10].condition[COND_SHIELD_FROM_HITS]); /*** shield ***/
+    if (monst.type[4] && monster[chare - 10].condition[COND_PROTECTION_FROM_EVIL])
       att -= 10; /*** +10% for pro evil ***/
   }
 
@@ -647,28 +647,28 @@ trynewweapon:
   }
 
   if (chare < 9) {
-    if ((c[chare].condition[31]) && (Rand(100) < 34) && (!monster[mon - 10].dist))
+    if ((c[chare].condition[COND_REFLECTING_ATTACKS]) && (Rand(100) < 34) && (!monster[mon - 10].dist))
       chare = mon;
   } else if (chare > 9) {
-    if ((monster[chare - 10].condition[31]) && (Rand(100) < 34) && (!monster[mon - 10].dist))
+    if ((monster[chare - 10].condition[COND_REFLECTING_ATTACKS]) && (Rand(100) < 34) && (!monster[mon - 10].dist))
       chare = mon;
   }
 
   if (chare < 9) {
-    if (character.condition[1]) {
+    if (character.condition[COND_HELPLESS]) {
       damage = character.stamina + Rand(10);
       goto doit;
     }
-  } else if (monster[chare - 10].condition[1]) {
+  } else if (monster[chare - 10].condition[COND_HELPLESS]) {
     damage = monster[chare - 10].stamina;
     goto doit;
   }
 
   if (success) {
     damage += monst.damplus;
-    if (monst.condition[21])
+    if (monst.condition[COND_STRONG])
       damage += 3; /***** strong ****/
-    damage += monst.condition[32]; /***** attack bonus ****/
+    damage += monst.condition[COND_ATTACK_BONUS]; /***** attack bonus ****/
     if (!monst.weapon) {
       if (monst.attacks[attacknum][0])
         damage += randrange(monst.attacks[attacknum][0], monst.attacks[attacknum][1]);
@@ -686,7 +686,7 @@ trynewweapon:
           specdamage = Rand(item.heat);
           if (savevs(1, chare))
             specdamage /= 2;
-          if (monster[chare - 10].condition[11])
+          if (monster[chare - 10].condition[COND_FIRE_PROTECTION])
             specdamage /= 2;
           specialdam += specdamage;
           if (specdamage)
@@ -696,7 +696,7 @@ trynewweapon:
           specdamage = Rand(item.cold);
           if (savevs(2, chare))
             specdamage /= 2;
-          if (monster[chare - 10].condition[12])
+          if (monster[chare - 10].condition[COND_COLD_PROTECTION])
             specdamage /= 2;
           specialdam += specdamage;
           if (specdamage)
@@ -706,7 +706,7 @@ trynewweapon:
           specdamage = Rand(item.electric);
           if (savevs(3, chare))
             specdamage /= 2;
-          if (monster[chare - 10].condition[13])
+          if (monster[chare - 10].condition[COND_ELECTRICAL_PROTECTION])
             specdamage /= 2;
           if (specdamage)
             specialdam += specdamage;
@@ -732,7 +732,7 @@ trynewweapon:
           specdamage = Rand(item.heat);
           if (savevs(1, chare))
             specdamage /= 2;
-          if (c[chare].condition[11])
+          if (c[chare].condition[COND_FIRE_PROTECTION])
             specdamage /= 2;
           specialdam += specdamage;
           if (specdamage)
@@ -742,7 +742,7 @@ trynewweapon:
           specdamage = Rand(item.cold);
           if (savevs(2, chare))
             specdamage /= 2;
-          if (c[chare].condition[12])
+          if (c[chare].condition[COND_COLD_PROTECTION])
             specdamage /= 2;
           specialdam += specdamage;
           if (specdamage)
@@ -752,7 +752,7 @@ trynewweapon:
           specdamage = Rand(item.electric);
           if (savevs(3, chare))
             specdamage /= 2;
-          if (c[chare].condition[13])
+          if (c[chare].condition[COND_ELECTRICAL_PROTECTION])
             specdamage /= 2;
           specialdam += specdamage;
           if (specdamage)
@@ -776,8 +776,8 @@ trynewweapon:
           /** *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
            * NOTE(danapplegate): Each special attack condition check below originally had the form:
            *
-           *   if ((c[chare].condition[0] += abs(specdamage)) < 30)
-           *     c[chare].condition[0] += abs(specdamage);
+           *   if ((c[chare]condition[COND_RUNS_AWAY] += abs(specdamage)) < 30)
+           *     c[chare]condition[COND_RUNS_AWAY] += abs(specdamage);
            *
            * This appears to have been intended to only apply damage if adding the damage to the condition
            * duration would not exceed 30 rounds. However, note that the compound assignment operator
@@ -787,7 +787,7 @@ trynewweapon:
            *
            * If we were to fix it by changing it to read:
            *
-           *   it ((c[chare].condition[0] + abs(specdamage)) < 30)
+           *   it ((c[chare]condition[COND_RUNS_AWAY] + abs(specdamage)) < 30)
            *
            * that would fix the double application of damage, but would have the strange result that more
            * powerful monsters that deal large amounts of special damage would have a lower chance of
@@ -795,72 +795,72 @@ trynewweapon:
            * the attack if the starting condition duration is less than 30.
            */
           case 1: /**** fear ****/
-            if ((!savevs(5, chare)) && (character.condition[0] > -1)) {
-              if (c[chare].condition[0] < 30)
-                c[chare].condition[0] += abs(specdamage);
+            if ((!savevs(5, chare)) && (character.condition[COND_RUNS_AWAY] > -1)) {
+              if (c[chare].condition[COND_RUNS_AWAY] < 30)
+                c[chare].condition[COND_RUNS_AWAY] += abs(specdamage);
               sound(630);
               showresults(chare, -33, mon); /****** special attack ******/
             }
             break;
 
           case 2: /**** paralyze ****/
-            if ((!savevs(5, chare)) && (character.condition[1] > -1)) {
-              if (c[chare].condition[1] < 30)
-                c[chare].condition[1] += abs(specdamage);
+            if ((!savevs(5, chare)) && (character.condition[COND_HELPLESS] > -1)) {
+              if (c[chare].condition[COND_HELPLESS] < 30)
+                c[chare].condition[COND_HELPLESS] += abs(specdamage);
               sound(630);
               showresults(chare, -32, mon); /****** special attack ******/
             }
             break;
 
           case 3: /**** curse ****/
-            if ((!savevs(7, chare)) && (character.condition[3] > -1)) {
-              if (c[chare].condition[3] < 30)
-                c[chare].condition[3] += abs(specdamage);
+            if ((!savevs(7, chare)) && (character.condition[COND_CURSED] > -1)) {
+              if (c[chare].condition[COND_CURSED] < 30)
+                c[chare].condition[COND_CURSED] += abs(specdamage);
               sound(630);
               showresults(chare, -31, mon); /****** special attack ******/
             }
             break;
 
           case 4: /**** stupid ****/
-            if ((!savevs(5, chare)) && (character.condition[5] > -1)) {
-              if (c[chare].condition[5] < 30)
-                c[chare].condition[5] += abs(specdamage);
+            if ((!savevs(5, chare)) && (character.condition[COND_STUPID] > -1)) {
+              if (c[chare].condition[COND_STUPID] < 30)
+                c[chare].condition[COND_STUPID] += abs(specdamage);
               sound(630);
               showresults(chare, -30, mon); /****** special attack ******/
             }
             break;
 
           case 5: /**** entangle ****/
-            if ((!savevs(7, chare)) && (character.condition[6] > -1)) {
-              if (c[chare].condition[6] < 30)
-                c[chare].condition[6] += abs(specdamage);
+            if ((!savevs(7, chare)) && (character.condition[COND_SLOW] > -1)) {
+              if (c[chare].condition[COND_SLOW] < 30)
+                c[chare].condition[COND_SLOW] += abs(specdamage);
               sound(630);
               showresults(chare, -29, mon); /****** special attack ******/
             }
             break;
 
           case 6: /**** poison ****/
-            if ((!savevs(4, chare)) && (character.condition[9] > -1)) {
-              if (c[chare].condition[9] < 30)
-                c[chare].condition[9] += abs(specdamage);
+            if ((!savevs(4, chare)) && (character.condition[COND_POISONED] > -1)) {
+              if (c[chare].condition[COND_POISONED] < 30)
+                c[chare].condition[COND_POISONED] += abs(specdamage);
               sound(630);
               showresults(chare, -28, mon); /****** special attack ******/
             }
             break;
 
           case 7: /**** confuse ****/
-            if ((!savevs(5, chare)) && (character.condition[29] > -1)) {
-              if (c[chare].condition[29] < 30)
-                c[chare].condition[29] += abs(specdamage);
+            if ((!savevs(5, chare)) && (character.condition[COND_CONFUSED] > -1)) {
+              if (c[chare].condition[COND_CONFUSED] < 30)
+                c[chare].condition[COND_CONFUSED] += abs(specdamage);
               sound(630);
               showresults(chare, -27, mon); /****** special attack ******/
             }
             break;
 
           case 16: /**** disease ****/
-            if ((!savevs(4, chare)) && (character.condition[28] > -1)) {
-              if (c[chare].condition[28] < 30)
-                c[chare].condition[28] += abs(specdamage);
+            if ((!savevs(4, chare)) && (character.condition[COND_DISEASED] > -1)) {
+              if (c[chare].condition[COND_DISEASED] < 30)
+                c[chare].condition[COND_DISEASED] += abs(specdamage);
               sound(630);
               showresults(chare, -34, mon); /****** special attack ******/
             }
@@ -901,7 +901,7 @@ trynewweapon:
             specdamage = Rand(monst.attacks[attackloop][1]);
             if (savevs(1, chare))
               specdamage /= 2;
-            if (c[chare].condition[11])
+            if (c[chare].condition[COND_FIRE_PROTECTION])
               specdamage /= 2;
             specialdam += specdamage;
             if (specdamage)
@@ -912,7 +912,7 @@ trynewweapon:
             specdamage = Rand(monst.attacks[attackloop][1]);
             if (savevs(2, chare))
               specdamage /= 2;
-            if (c[chare].condition[12])
+            if (c[chare].condition[COND_COLD_PROTECTION])
               specdamage /= 2;
             specialdam += specdamage;
             if (specdamage)
@@ -923,7 +923,7 @@ trynewweapon:
             specdamage = Rand(monst.attacks[attackloop][1]);
             if (savevs(3, chare))
               specdamage /= 2;
-            if (c[chare].condition[13])
+            if (c[chare].condition[COND_ELECTRICAL_PROTECTION])
               specdamage /= 2;
             specialdam += specdamage;
             if (specdamage)
@@ -934,7 +934,7 @@ trynewweapon:
             specdamage = Rand(monst.attacks[attackloop][1]);
             if (savevs(4, chare))
               specdamage /= 2;
-            if (c[chare].condition[14])
+            if (c[chare].condition[COND_CHEMICAL_PROTECTION])
               specdamage /= 2;
             specialdam += specdamage;
             if (specdamage)
@@ -945,7 +945,7 @@ trynewweapon:
             specdamage = Rand(monst.attacks[attackloop][1]);
             if (savevs(5, chare))
               specdamage /= 2;
-            if (c[chare].condition[15])
+            if (c[chare].condition[COND_MENTAL_PROTECTION])
               specdamage /= 2;
             specialdam += specdamage;
             if (specdamage)
@@ -979,14 +979,14 @@ trynewweapon:
           case 18: /**** cause blindness ****/
             if (!savevs(7, chare)) {
               showresults(chare, -47, mon); /****** special attack ******/
-              c[chare].condition[27] = -1;
+              c[chare].condition[COND_BLIND] = -1;
             }
             break;
 
           case 19: /**** turn to stone ****/
             if (!savevs(7, chare)) {
               c[chare].stamina = 0;
-              c[chare].condition[26] = -1;
+              c[chare].condition[COND_TURNED_TO_STONE] = -1;
               showresults(chare, -49, mon); /****** special attack ******/
               goto forcekill;
             }
@@ -998,64 +998,64 @@ trynewweapon:
       {
         switch (t) {
           case 1: /**** fear ****/
-            if ((!savevs(5, chare)) && (monster[chare - 10].condition[0] > -1)) {
-              monster[chare - 10].condition[0] += abs(specdamage);
+            if ((!savevs(5, chare)) && (monster[chare - 10].condition[COND_RUNS_AWAY] > -1)) {
+              monster[chare - 10].condition[COND_RUNS_AWAY] += abs(specdamage);
               sound(630);
               showresults(chare, -33, mon); /****** special attack ******/
             }
             break;
 
           case 2: /**** paralyse ****/
-            if ((!savevs(5, chare)) && (monster[chare - 10].condition[1] > -1)) {
-              monster[chare - 10].condition[1] += abs(specdamage);
+            if ((!savevs(5, chare)) && (monster[chare - 10].condition[COND_HELPLESS] > -1)) {
+              monster[chare - 10].condition[COND_HELPLESS] += abs(specdamage);
               sound(630);
               showresults(chare, -32, mon); /****** special attack ******/
             }
             break;
 
           case 3: /**** curse ****/
-            if ((!savevs(7, chare)) && (monster[chare - 10].condition[3] > -1)) {
-              monster[chare - 10].condition[3] += abs(specdamage);
+            if ((!savevs(7, chare)) && (monster[chare - 10].condition[COND_CURSED] > -1)) {
+              monster[chare - 10].condition[COND_CURSED] += abs(specdamage);
               sound(630);
               showresults(chare, -31, mon); /****** special attack ******/
             }
             break;
 
           case 4: /**** stupid ****/
-            if ((!savevs(5, chare)) && (monster[chare - 10].condition[5] > -1)) {
-              monster[chare - 10].condition[5] += abs(specdamage);
+            if ((!savevs(5, chare)) && (monster[chare - 10].condition[COND_STUPID] > -1)) {
+              monster[chare - 10].condition[COND_STUPID] += abs(specdamage);
               sound(630);
               showresults(chare, -30, mon); /****** special attack ******/
             }
             break;
 
           case 5: /**** entangle ****/
-            if ((!savevs(7, chare)) && (monster[chare - 10].condition[6] > -1)) {
-              monster[chare - 10].condition[6] += abs(specdamage);
+            if ((!savevs(7, chare)) && (monster[chare - 10].condition[COND_SLOW] > -1)) {
+              monster[chare - 10].condition[COND_SLOW] += abs(specdamage);
               sound(630);
               showresults(chare, -29, mon); /****** special attack ******/
             }
             break;
 
           case 6: /**** poison ****/
-            if ((!savevs(4, chare)) && (monster[chare - 10].condition[9] > -1)) {
-              monster[chare - 10].condition[9] += abs(specdamage);
+            if ((!savevs(4, chare)) && (monster[chare - 10].condition[COND_POISONED] > -1)) {
+              monster[chare - 10].condition[COND_POISONED] += abs(specdamage);
               sound(630);
               showresults(chare, -28, mon); /****** special attack ******/
             }
             break;
 
           case 7: /**** confuse ****/
-            if ((!savevs(5, chare)) && (monster[chare - 10].condition[29] > -1)) {
-              monster[chare - 10].condition[29] += abs(specdamage);
+            if ((!savevs(5, chare)) && (monster[chare - 10].condition[COND_CONFUSED] > -1)) {
+              monster[chare - 10].condition[COND_CONFUSED] += abs(specdamage);
               sound(630);
               showresults(chare, -27, mon); /****** special attack ******/
             }
             break;
 
           case 16: /**** disease ****/
-            if ((!savevs(4, chare)) && (monster[chare - 10].condition[28] > -1)) {
-              monster[chare - 10].condition[28] += abs(specdamage);
+            if ((!savevs(4, chare)) && (monster[chare - 10].condition[COND_DISEASED] > -1)) {
+              monster[chare - 10].condition[COND_DISEASED] += abs(specdamage);
               sound(684);
               showresults(chare, -34, mon); /****** special attack ******/
             }
@@ -1091,7 +1091,7 @@ trynewweapon:
             specdamage = Rand(monst.attacks[attackloop][1]);
             if (savevs(1, chare))
               specdamage /= 2;
-            if (monster[chare - 10].condition[11])
+            if (monster[chare - 10].condition[COND_FIRE_PROTECTION])
               specdamage /= 2;
             specialdam += specdamage;
             if (specdamage)
@@ -1103,7 +1103,7 @@ trynewweapon:
             if (savevs(2, chare))
               specdamage /= 2;
             specialdam += specdamage;
-            if (monster[chare - 10].condition[12])
+            if (monster[chare - 10].condition[COND_COLD_PROTECTION])
               specdamage /= 2;
             if (specdamage)
               showresults(chare, -20, mon); /****** special attack ******/
@@ -1114,7 +1114,7 @@ trynewweapon:
             if (savevs(3, chare))
               specdamage /= 2;
             specialdam += specdamage;
-            if (monster[chare - 10].condition[13])
+            if (monster[chare - 10].condition[COND_ELECTRICAL_PROTECTION])
               specdamage /= 2;
             if (specdamage)
               showresults(chare, -21, mon); /****** special attack ******/
@@ -1125,7 +1125,7 @@ trynewweapon:
             if (savevs(4, chare))
               specdamage /= 2;
             specialdam += specdamage;
-            if (monster[chare - 10].condition[14])
+            if (monster[chare - 10].condition[COND_CHEMICAL_PROTECTION])
               specdamage /= 2;
             if (specdamage)
               showresults(chare, -22, mon); /****** special attack ******/
@@ -1136,7 +1136,7 @@ trynewweapon:
             if (savevs(5, chare))
               specdamage /= 2;
             specialdam += specdamage;
-            if (monster[chare - 10].condition[15])
+            if (monster[chare - 10].condition[COND_MENTAL_PROTECTION])
               specdamage /= 2;
             if (specdamage)
               showresults(chare, -23, mon); /****** special attack ******/
@@ -1144,14 +1144,14 @@ trynewweapon:
 
           case 18: /**** Blinded ****/
             if (!savevs(7, chare)) {
-              monster[chare - 10].condition[27] = -1;
+              monster[chare - 10].condition[COND_BLIND] = -1;
               showresults(chare, -47, mon); /****** special attack ******/
             }
             break;
 
           case 19: /**** Stoned ****/
             if (!savevs(7, chare)) {
-              monster[chare - 10].condition[26] = TRUE;
+              monster[chare - 10].condition[COND_TURNED_TO_STONE] = TRUE;
               monster[chare - 10].stamina = 0;
               showresults(chare, -49, mon); /****** special attack ******/
               goto forcekill;
@@ -1161,7 +1161,7 @@ trynewweapon:
       }
     }
 
-    if ((partycondition[2]) && (damage > 1) && (chare < 9)) /**** barkskin & other *****/
+    if ((partycondition[PARTY_COND_DRAGON_HIDE]) && (damage > 1) && (chare < 9)) /**** barkskin & other *****/
     {
       damage -= 5;
       if (damage < 1)

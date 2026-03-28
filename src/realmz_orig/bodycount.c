@@ -14,7 +14,7 @@ void bodycount(void) {
     select[t] = 0;
 
   for (t = 0; t < nummon; t++) {
-    monster[t].beenattacked = monster[t].condition[0] = monster[t].condition[1] = monster[t].condition[2] = monster[t].condition[5] = monster[t].condition[29] = monster[t].condition[38] = 0;
+    monster[t].beenattacked = monster[t].condition[COND_RUNS_AWAY] = monster[t].condition[COND_HELPLESS] = monster[t].condition[COND_TANGLED] = monster[t].condition[COND_STUPID] = monster[t].condition[COND_CONFUSED] = monster[t].condition[COND_DEFENSE_BONUS] = 0;
     if (monster[t].cansum < 0)
       monster[t].traiter = 0;
     if ((monster[t].stamina > 0) && (!monster[t].traiter) && (monster[t].cansum))
@@ -185,7 +185,7 @@ out:
         for (tt = 0; tt < 4; tt++)
           if (holdover[chosen].condition[tt] > 0)
             holdover[chosen].condition[tt] = 0;
-        holdover[chosen].condition[35] = 0;
+        holdover[chosen].condition[COND_ABSORBING_ENERGY_FROM_ATTACKS] = 0;
 #if CHECK_ILLEGAL_ACCESS > 0
         if (abs(select[t]) - 1 < 0 || abs(select[t]) - 1 >= 100)
           AcamErreur("monster bad index");

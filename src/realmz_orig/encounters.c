@@ -246,7 +246,7 @@ update2:
         charselectnew = 0;
       if (charselectnew < 0)
         charselectnew = charnum;
-      if ((c[charselectnew].stamina < 1) || (c[charselectnew].condition[25]))
+      if ((c[charselectnew].stamina < 1) || (c[charselectnew].condition[COND_ANIMATED]))
         goto tryover;
       ploticon3(136, buttonrect);
       if (beenthere)

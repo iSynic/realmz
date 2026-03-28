@@ -238,13 +238,13 @@ short buttonchoice(short skipin) {
 
   if (theControl == search) {
     sound(141);
-    if (partycondition[5]) {
-      partycondition[5] = 0;
+    if (partycondition[PARTY_COND_SEARCH]) {
+      partycondition[PARTY_COND_SEARCH] = 0;
       SetPort(GetWindowPort(screen));
       GetControlBounds(search, &r);
       ploticon3(128, r);
     } else
-      partycondition[5] = -1;
+      partycondition[PARTY_COND_SEARCH] = -1;
   }
 
   if (theControl == torch) {
@@ -276,7 +276,7 @@ short buttonchoice(short skipin) {
       for (t = 0; t <= charnum; t++) {
         if (((c[t].spellcastertype == 1) || (c[t].spellcastertype == 2)) && cancast(t, 0)) {
           for (tt = 0; tt <= charnum; tt++) {
-            if ((c[tt].stamina < c[tt].staminamax) && (c[tt].stamina > -10) && (!c[tt].condition[26]) && (c[t].spellpoints > 9)) {
+            if ((c[tt].stamina < c[tt].staminamax) && (c[tt].stamina > -10) && (!c[tt].condition[COND_TURNED_TO_STONE]) && (c[t].spellpoints > 9)) {
               if ((c[t].canheal) && cancast(t, 0)) {
                 c[t].spellpoints -= 10;
                 updatecharshort(t, FALSE);

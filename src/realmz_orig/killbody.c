@@ -40,10 +40,10 @@ void killbody(short mon, short performque) {
 
       if (c[mon].traiter)
         killmon++;
-      else if ((!c[mon].traiter) && (c[mon].condition[25] < 1))
+      else if ((!c[mon].traiter) && (c[mon].condition[COND_ANIMATED] < 1))
         killparty++;
 
-      c[mon].condition[25] = c[mon].attacks = 0;
+      c[mon].condition[COND_ANIMATED] = c[mon].attacks = 0;
       for (t = 0; t < 40; t++)
         if (c[mon].condition[t] > 0)
           c[mon].condition[t] = 0;
@@ -177,7 +177,7 @@ void killbody(short mon, short performque) {
   if (incombat) {
     if (!performque) {
       for (t = 0; t <= charnum; t++) {
-        if ((c[t].position == -1) || (c[t].stamina < 1) || (c[t].traiter) || (c[t].condition[25] < 0))
+        if ((c[t].position == -1) || (c[t].stamina < 1) || (c[t].traiter) || (c[t].condition[COND_ANIMATED] < 0))
           escape++;
       }
 

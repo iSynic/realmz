@@ -83,11 +83,10 @@ void resolvespell(void) {
     if (special == 50) /**** light *****/
     {
       sound(601);
-      if (powerlevel * 30 > partycondition[0]) {
+      if (powerlevel * 30 > partycondition[PARTY_COND_TORCH_LIT]) {
         CGrafPtr thePort = GetQDGlobalsThePort();
-        partycondition[0] = (30 * powerlevel) - 1;
-        if ((thePort == GetWindowPort(screen)) ||
-            (thePort == GetWindowPort(look))) {
+        partycondition[PARTY_COND_TORCH_LIT] = (30 * powerlevel) - 1;
+        if ((thePort == GetWindowPort(screen)) || (thePort == GetWindowPort(look))) {
           RGBBackColor(&greycolor);
           GetControlBounds(torch, &buttonrect);
           // buttonrect = *&(**(torch)).contrlRect;
@@ -273,14 +272,14 @@ void resolvespell(void) {
     doagain:
       damage = adjdam;
       if ((t < 9) && (incombat)) {
-        if ((t != q[up]) && (c[t].spellpointsmax) && (c[t].condition[35]) && (q[up] > 9)) {
+        if ((t != q[up]) && (c[t].spellpointsmax) && (c[t].condition[COND_ABSORBING_ENERGY_FROM_ATTACKS]) && (q[up] > 9)) {
           c[t].spellpoints += curControlValue;
           if (c[t].spellpoints > c[t].spellpointsmax)
             c[t].spellpoints = c[t].spellpointsmax;
         }
       } else if (incombat) {
         monst = monster[t - 10];
-        if ((t != q[up]) && (monster[t - 10].spellpoints) && (monster[t - 10].condition[35]) && (q[up] < 9))
+        if ((t != q[up]) && (monster[t - 10].spellpoints) && (monster[t - 10].condition[COND_ABSORBING_ENERGY_FROM_ATTACKS]) && (q[up] < 9))
           monster[t - 10].spellpoints += curControlValue;
       }
 
@@ -300,7 +299,7 @@ void resolvespell(void) {
                 goto out;
               }
             }
-            if ((damage) && (c[t].condition[10 + damagetype]))
+            if ((damage) && (c[t].condition[COND_FIRE_PROTECTION + (damagetype - 1)]))
               damage /= 2;
             collidecheck[collideflag] = TRUE;
           }
@@ -314,7 +313,7 @@ void resolvespell(void) {
             }
           }
 
-          if ((damage) && (monst.condition[10 + damagetype]))
+          if ((damage) && (monst.condition[COND_FIRE_PROTECTION + (damagetype - 1)]))
             damage /= 2;
 
           collidecheck[collideflag] = TRUE;

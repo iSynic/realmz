@@ -534,7 +534,7 @@ shortupdate:
 
           MyrCDiStr(61 + charnum, (StringPtr) "");
 
-          if ((c[newcharpick].stamina < 1) || (c[newcharpick].condition[25]))
+          if ((c[newcharpick].stamina < 1) || (c[newcharpick].condition[COND_ANIMATED]))
             killparty--;
 
 #if CHECK_ILLEGAL_ACCESS > 0
@@ -690,7 +690,7 @@ shortupdate:
         updatechar(charnum, 5);
         ploticon3(130, buttonrect);
 
-        if ((c[charnum].stamina < 1) || (c[charnum].condition[25]))
+        if ((c[charnum].stamina < 1) || (c[charnum].condition[COND_ANIMATED]))
           killparty++;
         goto shortupdate;
       }

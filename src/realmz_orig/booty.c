@@ -100,14 +100,14 @@ void booty(short mode) {
     mode = 2;
 
   for (t = 0; t <= charnum; t++) {
-    c[t].condition[1] = c[t].bleeding = c[t].traiter = FALSE;
+    c[t].condition[COND_HELPLESS] = c[t].bleeding = c[t].traiter = FALSE;
     for (tt = 0; tt < 4; tt++)
       if (c[t].condition[tt] > 0)
         c[t].condition[tt] = 0;
-    if ((c[t].stamina < 1) || (c[t].condition[25] < 0))
+    if ((c[t].stamina < 1) || (c[t].condition[COND_ANIMATED] < 0))
       killparty++;
-    if (c[t].condition[25] > 0)
-      c[t].condition[25] = 0;
+    if (c[t].condition[COND_ANIMATED] > 0)
+      c[t].condition[COND_ANIMATED] = 0;
   }
 
   EnableItem(gFile, 3);
@@ -122,8 +122,8 @@ void booty(short mode) {
   inbooty = TRUE;
   SetCCursor(sword);
 
-  if (partycondition[0])
-    loaddark((partycondition[0] / 30) + 1);
+  if (partycondition[PARTY_COND_TORCH_LIT])
+    loaddark((partycondition[PARTY_COND_TORCH_LIT] / 30) + 1);
   else
     loaddark(0);
 
@@ -373,7 +373,7 @@ update:
   numfoes = nummon = 0;
 
   for (t = 0; t <= charnum; t++) {
-    if ((c[t].stamina > 0) && (c[t].condition[25] > -1) && (c[t].inbattle))
+    if ((c[t].stamina > 0) && (c[t].condition[COND_ANIMATED] > -1) && (c[t].inbattle))
       dividers++;
   }
 
@@ -401,7 +401,7 @@ restoreitems:
 
   listindex = 0;
   for (t = 0; t <= charnum; t++) {
-    if ((c[t].stamina > 0) && (c[t].condition[25] > -1) && (c[t].inbattle)) {
+    if ((c[t].stamina > 0) && (c[t].condition[COND_ANIMATED] > -1) && (c[t].inbattle)) {
       tempshare = shareamount;
       loadprofile(c[t].race, 0);
       if (c[t].age / 365 >= races.maxage)
@@ -1159,7 +1159,7 @@ backup:
 
               for (t = 0; t <= charnum; t++) {
                 if (theControl == identhan[t]) {
-                  if ((!c[t].condition[5]) && (!c[t].condition[39]) && (!c[t].condition[25]) && (c[t].stamina > 0)) {
+                  if ((!c[t].condition[COND_STUPID]) && (!c[t].condition[COND_SILENCED]) && (!c[t].condition[COND_ANIMATED]) && (c[t].stamina > 0)) {
                     GetControlBounds(identhan[t], &buttonrect);
                     // buttonrect = *&(**(identhan[t])).contrlRect;
                     PenMode(0);

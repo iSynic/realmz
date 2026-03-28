@@ -84,7 +84,7 @@ void UpdateWindow(short titleonly) {
   color.blue = 39384;
   RGBForeColor(&color);
 
-  if ((multiview) || (partycondition[4])) {
+  if ((multiview) || (partycondition[PARTY_COND_WIZARD_EYE])) {
     MoveTo(81 + (leftshift / 2), 24 + downshift / 2);
     MyrDrawCString("Space bar to toggle view.");
   } else {
@@ -97,7 +97,7 @@ void UpdateWindow(short titleonly) {
   color.blue = 12384;
   RGBForeColor(&color);
 
-  if ((multiview) || (partycondition[4])) {
+  if ((multiview) || (partycondition[PARTY_COND_WIZARD_EYE])) {
     MoveTo(81 + (leftshift / 2), 24 + downshift / 2);
     MyrDrawCString("Space bar to toggle view.");
   } else {

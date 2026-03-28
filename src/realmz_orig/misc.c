@@ -78,11 +78,11 @@ void movecalc(short charselect) {
   top = character.load;
   bottom = character.loadmax;
   temp = 1 + (((bottom - top) / bottom) * movement);
-  if (character.condition[2])
-    temp -= character.condition[2]; /**** tangled ***/
-  if (character.condition[6])
+  if (character.condition[COND_TANGLED])
+    temp -= character.condition[COND_TANGLED]; /**** tangled ***/
+  if (character.condition[COND_SLOW])
     temp /= 2; /**** slow ****/
-  if (character.condition[23])
+  if (character.condition[COND_SPEEDY])
     temp *= 2; /******* haste *****/
   if (temp < 2)
     temp = 2;
@@ -1198,7 +1198,7 @@ short savevs(short which, short who) {
   }
 
   if ((who > -1) && (who <= charnum)) {
-    if ((which == 0) && (partycondition[7]))
+    if ((which == 0) && (partycondition[PARTY_COND_CHARM_RESISTANCE]))
       spelladjust += 50;
     if (temp <= c[who].save[which] + spelladjust)
       return (TRUE);

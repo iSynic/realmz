@@ -187,7 +187,7 @@ backup:
   buttonrect.bottom = buttonrect.top + 22;
 
   for (t = 0; t <= charnum; t++) {
-    c[t].condition[1] = 0; /******** remove HELPLESS condition *****/
+    c[t].condition[COND_HELPLESS] = 0; /******** remove HELPLESS condition *****/
     if (t == 3)
       OffsetRect(&buttonrect, 24, -72);
 

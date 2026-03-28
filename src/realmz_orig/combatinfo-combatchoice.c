@@ -177,8 +177,8 @@ void combatchoice(void) {
       else
         centerfield(pos[charup][0], pos[charup][1]);
     }
-    if (!c[charup].condition[25])
-      c[charup].condition[25] = TRUE;
+    if (!c[charup].condition[COND_ANIMATED])
+      c[charup].condition[COND_ANIMATED] = TRUE;
     FlushEvents(everyEvent, 0);
   }
 
@@ -202,10 +202,10 @@ void combatchoice(void) {
     }
   }
 
-  if ((c[charup].condition[25]) && (!c[charup].traiter)) {
+  if ((c[charup].condition[COND_ANIMATED]) && (!c[charup].traiter)) {
     theControl = movelook;
 
-    if ((c[charup].condition[25] > 0) && (!c[charup].condition[0])) /***** only auto characters do this ****/
+    if ((c[charup].condition[COND_ANIMATED] > 0) && (!c[charup].condition[COND_RUNS_AWAY])) /***** only auto characters do this ****/
     {
       if (!manualbandage) /**** manual bandage only ***/
       {
@@ -277,7 +277,7 @@ void combatchoice(void) {
     }
   }
 
-  if (c[charup].condition[25]) {
+  if (c[charup].condition[COND_ANIMATED]) {
     if (!tomissle(charup)) {
       temp = c[charup].toggle;
       if (c[charup].handtohand < 8)
@@ -344,7 +344,7 @@ void combatchoice(void) {
       }
 
       if (!c[charup].items[t].charge) {
-        if (!c[charup].condition[25]) {
+        if (!c[charup].condition[COND_ANIMATED]) {
           upbutton(TRUE);
           SetPort(GetWindowPort(look));
           ForeColor(blackColor);
@@ -390,7 +390,7 @@ void combatchoice(void) {
 
       shottry = 0;
 
-      if (c[charup].condition[25]) /****** possesed char using spell/missle weap ***/
+      if (c[charup].condition[COND_ANIMATED]) /****** possesed char using spell/missle weap ***/
       {
         spellrange = abs(spellinfo.range1 + spellinfo.range2 * powerlevel);
 
@@ -935,14 +935,14 @@ void combatchoice(void) {
 
                 good2:
                   sound(631);
-                  if (c[temptemp].condition[6] > -1)
-                    c[temptemp].condition[6] = 3;
+                  if (c[temptemp].condition[COND_SLOW] > -1)
+                    c[temptemp].condition[COND_SLOW] = 3;
                   c[temptemp].traiter = c[temptemp].bleeding = inspell = 0;
                   c[temptemp].target = -1;
                   c[temptemp].beenattacked = c[temptemp].inbattle = TRUE;
 
-                  if (c[temptemp].condition[5] > -1)
-                    c[temptemp].condition[5] = 2;
+                  if (c[temptemp].condition[COND_STUPID] > -1)
+                    c[temptemp].condition[COND_STUPID] = 2;
 
                   for (t = maxloopminus; t > 0; t--) {
                     if (q[t] == -1) {
@@ -1518,7 +1518,7 @@ void combatchoice(void) {
     } else
       updatearrow(0);
 
-    if ((poss) || (c[charup].condition[25])) {
+    if ((poss) || (c[charup].condition[COND_ANIMATED])) {
       if (checkforenemy(1))
         c[charup].target = enemy[0];
       else {
@@ -1563,7 +1563,7 @@ void combatchoice(void) {
       if (targety > pos[charup][1])
         deltay = 1;
 
-      if (c[charup].condition[0]) /**** running away ****/
+      if (c[charup].condition[COND_RUNS_AWAY]) /**** running away ****/
       {
         deltax *= -1;
         deltay *= -1;
@@ -1616,8 +1616,8 @@ void combatchoice(void) {
           getup(FALSE);
           return;
         } else {
-          if (c[charup].condition[25] > 0) {
-            c[charup].condition[25] = poss = 0;
+          if (c[charup].condition[COND_ANIMATED] > 0) {
+            c[charup].condition[COND_ANIMATED] = poss = 0;
           }
         }
       }
@@ -1631,7 +1631,7 @@ void combatchoice(void) {
     checkforenemy(1); /****** check for enemy before moving *****/
 
   loopposs:
-    if (((poss) || (c[charup].condition[25])) && (hit > -1)) {
+    if (((poss) || (c[charup].condition[COND_ANIMATED])) && (hit > -1)) {
       if ((pass++ > 20) || (c[charup].movement < 1)) {
         deltax = deltay = 0;
         checkforenemy(0); /****** check for guarding enemy ***********/
@@ -1713,13 +1713,13 @@ void combatchoice(void) {
       if (hit > 9) {
         if ((!monster[hit - 10].size) && (c[charup].movement > 4))
           goto goodswap;
-        else if ((!poss) && (!c[charup].condition[25]))
+        else if ((!poss) && (!c[charup].condition[COND_ANIMATED]))
           goto askem;
-        else if ((poss) || (c[charup].condition[25]))
+        else if ((poss) || (c[charup].condition[COND_ANIMATED]))
           goto loopposs;
       } else if (c[charup].movement > 4) {
       goodswap:
-        if ((poss) || (c[charup].condition[25]))
+        if ((poss) || (c[charup].condition[COND_ANIMATED]))
           goto autoswap;
 
         if (question3((StringPtr) "Swap Positions", (StringPtr) "Attack Friend") == 2) {
@@ -1770,7 +1770,7 @@ void combatchoice(void) {
           return; /**** hit esc key ****/
         else
           goto wantstoattack;
-      } else if ((!poss) && (!c[charup].condition[25])) {
+      } else if ((!poss) && (!c[charup].condition[COND_ANIMATED])) {
       askem:
         if (question3((StringPtr) "Attack Your Friend", (StringPtr) "Do Not Attack") == 2) {
         wantstoattack:
@@ -1790,7 +1790,7 @@ void combatchoice(void) {
     if (hit > 999) {
       if (mapstats[hit - 1000].solid) /**** hit solid****/
       {
-        if ((!poss) && (!c[charup].condition[25]))
+        if ((!poss) && (!c[charup].condition[COND_ANIMATED]))
           sound(-129);
         else
           goto loopposs; /******* send poss char back to try again **************/
@@ -1840,7 +1840,7 @@ void combatchoice(void) {
 
     if ((c[charup].movement - cost < 0) || ((deltax == 0) && (deltay == 0))) {
       deltax = deltay = 0;
-      if ((poss) || (c[charup].condition[25]))
+      if ((poss) || (c[charup].condition[COND_ANIMATED]))
         goto loopposs;
       sound(-130);
     }

@@ -511,8 +511,8 @@ short HandleMenuChoice(void) {
           DisableItem(gFile, 1);
           TextFont(defaultfont);
           DrawMenuBar();
-          if (partycondition[0])
-            loaddark((partycondition[0] / 30) + 1);
+          if (partycondition[PARTY_COND_TORCH_LIT])
+            loaddark((partycondition[PARTY_COND_TORCH_LIT] / 30) + 1);
           else
             loaddark(0);
 
@@ -598,7 +598,7 @@ short HandleMenuChoice(void) {
                 note.isdung = FALSE;
                 note.level = landlevel;
                 if (randlevel.isdark)
-                  note.wasdark = partycondition[0] / 30 + 1;
+                  note.wasdark = partycondition[PARTY_COND_TORCH_LIT] / 30 + 1;
                 else
                   note.wasdark = 0;
                 note.x = lookx + partyx;
@@ -625,7 +625,7 @@ short HandleMenuChoice(void) {
           note.isdung = FALSE;
           note.level = landlevel;
           if (randlevel.isdark)
-            note.wasdark = partycondition[0] / 30 + 1;
+            note.wasdark = partycondition[PARTY_COND_TORCH_LIT] / 30 + 1;
           else
             note.wasdark = 0;
           note.x = lookx + partyx;
@@ -745,7 +745,7 @@ short HandleMenuChoice(void) {
           loadland(landlevel, TRUE);
 
         if (randlevel.isdark)
-          loaddark(partycondition[0] / 30 + 1);
+          loaddark(partycondition[PARTY_COND_TORCH_LIT] / 30 + 1);
 
         SetPortDialogPort(info2);
         GetDialogItem(info2, 3, &itemType, &itemHandle, &itemRect);
@@ -781,7 +781,7 @@ short HandleMenuChoice(void) {
             note.isdung = FALSE;
             note.level = landlevel;
             if (randlevel.isdark)
-              note.wasdark = partycondition[0] / 30 + 1;
+              note.wasdark = partycondition[PARTY_COND_TORCH_LIT] / 30 + 1;
             else
               note.wasdark = 0;
             note.x = lookx + partyx;

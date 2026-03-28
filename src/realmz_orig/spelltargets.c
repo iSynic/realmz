@@ -98,9 +98,9 @@ passout:
 
           if (((temp < maxloop) && (who == -1)) || (temp == who)) {
             if (spellinfo.spellclass != 9) {
-              if ((temp < 9) && (c[temp].condition[30]) && (Rand(100) < 34) && (!noreflect))
+              if ((temp < 9) && (c[temp].condition[COND_REFLECTING_SPELLS]) && (Rand(100) < 34) && (!noreflect))
                 track[q[up]] = TRUE;
-              else if ((temp > 9) && (monster[temp - 10].condition[30]) && (Rand(100) < 34) && (!noreflect))
+              else if ((temp > 9) && (monster[temp - 10].condition[COND_REFLECTING_SPELLS]) && (Rand(100) < 34) && (!noreflect))
                 track[q[up]] = TRUE;
               else if ((temp > 9) && (monster[temp - 10].magres > 100))
                 track[temp] = FALSE; /*** immune to ALL magic ***/

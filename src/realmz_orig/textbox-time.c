@@ -171,7 +171,7 @@ short timeclick(unsigned char number, short checkforrandom) {
         updatefat(FALSE, 1, FALSE);
 
       for (t = 0; t <= charnum; t++) {
-        if ((c[t].spellpoints < c[t].spellpointsmax) && (c[t].stamina > 0) && (!c[t].condition[25])) {
+        if ((c[t].spellpoints < c[t].spellpointsmax) && (c[t].stamina > 0) && (!c[t].condition[COND_ANIMATED])) {
           chunk = c[t].level / 2;
           if (chunk < 1)
             chunk = 1;
@@ -306,7 +306,7 @@ short timeclick(unsigned char number, short checkforrandom) {
                   chunk /= 2; /***** who = -1 is anybody ****/
                 if (chunk < 1)
                   chunk = 1;
-                heal(t, chunk + c[t].condition[9], 0);
+                heal(t, chunk + c[t].condition[COND_POISONED], 0);
               }
             }
           }
@@ -392,7 +392,7 @@ short timeclick(unsigned char number, short checkforrandom) {
               return (reply);
             }
           }
-          if ((!partycondition[7]) && (canencounter)) {
+          if ((!partycondition[PARTY_COND_SENTRY]) && (canencounter)) {
             if (randlevel.battlerange[t][0]) {
               suprise = 0;
               if (Rand(100) < randlevel.option[t]) {

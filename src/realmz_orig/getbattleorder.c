@@ -11,7 +11,7 @@ void getbattleorder(short suprise) {
   for (t = 0; t <= charnum; t++) {
     if (c[t].stamina > 0) {
       possible[possibleindex++] = t;
-      if (c[t].condition[25]) {
+      if (c[t].condition[COND_ANIMATED]) {
         left++;
         adjust++;
       }

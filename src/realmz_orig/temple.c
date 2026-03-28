@@ -137,19 +137,19 @@ out:
             break;
 
           case 18:
-            c[charselectnew].condition[28] = 0;
+            c[charselectnew].condition[COND_DISEASED] = 0;
             break;
 
           case 19:
-            c[charselectnew].condition[26] = 0;
+            c[charselectnew].condition[COND_TURNED_TO_STONE] = 0;
             break;
 
           case 20:
-            c[charselectnew].condition[9] = 0;
+            c[charselectnew].condition[COND_POISONED] = 0;
             break;
 
           case 21:
-            c[charselectnew].condition[27] = 0;
+            c[charselectnew].condition[COND_BLIND] = 0;
             break;
 
           case 22:
@@ -158,7 +158,7 @@ out:
 
           case 23:
             spelllist(charselectnew, 64);
-            c[charselectnew].condition[25] = c[charselectnew].condition[26] = 0;
+            c[charselectnew].condition[COND_ANIMATED] = c[charselectnew].condition[COND_TURNED_TO_STONE] = 0;
             break;
         }
 

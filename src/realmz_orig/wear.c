@@ -21,7 +21,7 @@ short wear(short character, short itemnum, short play) {
 
   item.type = holdtype = abs(item.type);
 
-  if ((incombat) && (c[character].condition[25]))
+  if ((incombat) && (c[character].condition[COND_ANIMATED]))
     play = FALSE;
 
   if (!canuse(c[character].items[itemnum].id, c[character].race, c[character].caste)) {

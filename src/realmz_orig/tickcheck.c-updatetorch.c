@@ -12,8 +12,8 @@ void tickcheck(void) {
   if (TickCount() > oldflametick + 10) {
     SetPort(GetWindowPort(screen));
     oldflametick = TickCount();
-    if (partycondition[0]) {
-      icon.top = downshift + 367 - partycondition[0] / 4;
+    if (partycondition[PARTY_COND_TORCH_LIT]) {
+      icon.top = downshift + 367 - partycondition[PARTY_COND_TORCH_LIT] / 4;
       if (icon.top < (331 + downshift))
         icon.top = 331 + downshift;
       icon.left = 526 + leftshift;
@@ -50,8 +50,8 @@ void updatetorch(void) {
   if (checkforitem(805, FALSE, -1))
     upbutton(TRUE);
 
-  if (partycondition[0]) {
-    stop = partycondition[0] / 31 + 1;
+  if (partycondition[PARTY_COND_TORCH_LIT]) {
+    stop = partycondition[PARTY_COND_TORCH_LIT] / 31 + 1;
   } else if (checkforitem(805, FALSE, -1)) {
     stop = 2;
     mainrect.left -= 6;

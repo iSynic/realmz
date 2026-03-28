@@ -56,7 +56,7 @@ short cancast(short who, short silentmode) {
   }
 
   if (who < 6) {
-    if (c[who].condition[29] || c[who].condition[39] || c[who].condition[1] || c[who].condition[5] || c[who].condition[25] || c[who].spellpoints < 1 || c[who].stamina < 1)
+    if (c[who].condition[COND_CONFUSED] || c[who].condition[COND_SILENCED] || c[who].condition[COND_HELPLESS] || c[who].condition[COND_STUPID] || c[who].condition[COND_ANIMATED] || c[who].spellpoints < 1 || c[who].stamina < 1)
       reply = 0;
 
     if (incombat) {

@@ -346,7 +346,7 @@ move:
           switch (key) {
             case ' ': /*** space  (Switch view mode if possible)   *****/
 
-              if ((multiview) || (partycondition[4])) {
+              if ((multiview) || (partycondition[PARTY_COND_WIZARD_EYE])) {
                 viewtype *= -1;
                 if (viewtype == 1) { /* 3D */
                   UpdateWindow(FALSE);

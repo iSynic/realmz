@@ -5,7 +5,7 @@ short movemonster(void) {
   short tempcost, cost, temptarget, monhit[4], t, retreat = 1;
   short targetx, targety, monx, mony, numtry = 0;
 
-  if (monster[monsterup].condition[0]) {
+  if (monster[monsterup].condition[COND_RUNS_AWAY]) {
     retreat = -1;
     checkforenemy(1); /****** first check for retreat *******/
   }
@@ -86,7 +86,7 @@ goback:
       goto goback;
   }
 
-  if (monster[monsterup].condition[0])
+  if (monster[monsterup].condition[COND_RUNS_AWAY])
     checkforenemy(2); /***** second check for retreat ******/
 
   // NOTE(fuzziqersoftware): This hides intermediate frames where parts of large

@@ -59,11 +59,11 @@ short resist(short who) {
       if (c[who].condition[ttt + 16])
         reply = TRUE; /*********** magic screen *********/
     /************* annimated immune to charm and mental spells **********/
-    if (((spellinfo.spellclass == 0) || (spellinfo.spellclass == 5)) && (c[who].condition[25]))
+    if (((spellinfo.spellclass == 0) || (spellinfo.spellclass == 5)) && (c[who].condition[COND_ANIMATED]))
       return (TRUE);
     if ((abs(spellinfo.spellclass) == 9) && (inspell)) {
       reply = FALSE;
-      if (c[who].condition[8])
+      if (c[who].condition[COND_SHIELD_FROM_PROJECTILES])
         return (TRUE); /**** missle shield ****/
       if (Rand(100) <= (c[who].dodge - (spellinfo.tohitbonus)))
         return (TRUE); /**** Missile dodge ****/
@@ -74,11 +74,11 @@ short resist(short who) {
       if (monster[who - 10].condition[ttt + 16])
         reply = TRUE; /*********** magic screen *********/
     /************* annimated immune to charm and mental spells **********/
-    if (((spellinfo.spellclass == 0) || (spellinfo.spellclass == 5)) && (monster[who - 10].condition[25]))
+    if (((spellinfo.spellclass == 0) || (spellinfo.spellclass == 5)) && (monster[who - 10].condition[COND_ANIMATED]))
       return (TRUE);
     if ((abs(spellinfo.spellclass) == 9) && (inspell)) {
       reply = FALSE;
-      if (monster[who - 10].condition[8])
+      if (monster[who - 10].condition[COND_SHIELD_FROM_PROJECTILES])
         return (TRUE); /***** missle shield ***/
       chance = 10 + 5 * monster[who - 10].dx - c[charup].missile - spellinfo.tohitbonus;
       if (Rand(100) <= chance)

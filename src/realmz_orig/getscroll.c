@@ -157,7 +157,7 @@ backup:
       goto over;
     }
 
-    if (c[charselectnew].condition[25]) {
+    if (c[charselectnew].condition[COND_ANIMATED]) {
       if (!initems)
         SetPort(GetWindowPort(look));
       else

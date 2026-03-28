@@ -43,8 +43,8 @@ startover:
 
   if ((q[up] < 9) && (q[up] > -1)) {
     updatelight(q[up], 1);
-    if (c[q[up]].condition[25] > 0)
-      c[q[up]].condition[25] = 0;
+    if (c[q[up]].condition[COND_ANIMATED] > 0)
+      c[q[up]].condition[COND_ANIMATED] = 0;
   }
 
   if (numchannel < 2)
@@ -128,9 +128,9 @@ getnew:
 
       monster[t].attacknum = 0;
 
-      if ((monster[t].condition[10]) && (monster[t].stamina > 0) && (monster[t].stamina < monster[t].staminamax)) /***** Regenerate ****/
+      if ((monster[t].condition[COND_REGENERATING]) && (monster[t].stamina > 0) && (monster[t].stamina < monster[t].staminamax)) /***** Regenerate ****/
       {
-        damage = abs(monster[t].condition[10]);
+        damage = abs(monster[t].condition[COND_REGENERATING]);
         monster[t].stamina += damage;
         if (monster[t].stamina > monster[t].staminamax) {
           damage -= (monster[t].stamina - monster[t].stamina);
@@ -142,18 +142,18 @@ getnew:
         regenerate = FALSE;
       }
 
-      if ((monster[t].condition[28]) && (!monster[t].condition[25]) && (monster[t].stamina > 0)) /***** disease ****/
+      if ((monster[t].condition[COND_DISEASED]) && (!monster[t].condition[COND_ANIMATED]) && (monster[t].stamina > 0)) /***** disease ****/
       {
-        damage = abs(monster[t].condition[28]);
+        damage = abs(monster[t].condition[COND_DISEASED]);
         monster[t].stamina -= damage;
         showresults(t + 10, 29, 0); /********* diseased for ***************/
         if (monster[t].stamina < 1)
           killbody(t + 10, 0);
       }
 
-      if ((monster[t].condition[9]) && (!monster[t].condition[25]) && (monster[t].stamina > 0)) /***** poison ****/
+      if ((monster[t].condition[COND_POISONED]) && (!monster[t].condition[COND_ANIMATED]) && (monster[t].stamina > 0)) /***** poison ****/
       {
-        damage = abs(monster[t].condition[9]);
+        damage = abs(monster[t].condition[COND_POISONED]);
         monster[t].stamina -= damage;
         poisoned = TRUE;
         showresults(t + 10, 0, 0); /********* poisoned for ***************/
@@ -162,16 +162,16 @@ getnew:
           killbody(t + 10, 0);
       }
 
-      if (monster[t].condition[34]) /****** power suck *******/
+      if (monster[t].condition[COND_ENERGY_DRAIN]) /****** power suck *******/
       {
-        monster[t].spellpoints -= monster[t].condition[34];
+        monster[t].spellpoints -= monster[t].condition[COND_ENERGY_DRAIN];
         if (monster[t].spellpoints < 0)
           monster[t].spellpoints = 0;
       }
 
-      if ((monster[t].condition[33]) && (monster[t].type[0])) /******* power absorbe ********/
+      if ((monster[t].condition[COND_ABSORBING_ENERGY]) && (monster[t].type[0])) /******* power absorbe ********/
       {
-        monster[t].spellpoints += monster[t].condition[34];
+        monster[t].spellpoints += monster[t].condition[COND_ENERGY_DRAIN];
       }
       for (tt = 0; tt < 60; tt++)
         collidecheck[tt] = 0;
@@ -206,14 +206,14 @@ getnew:
   if (q[up] < 9) {
     if (!c[q[up]].inbattle)
       goto getnew; /*** not in battle ******/
-    if (c[q[up]].condition[1])
+    if (c[q[up]].condition[COND_HELPLESS])
       goto getnew; /*** helpless ******/
     if (c[q[up]].traiter)
-      c[q[up]].condition[25] = poss = TRUE; /*** set character to auto because he is charmed ***/
+      c[q[up]].condition[COND_ANIMATED] = poss = TRUE; /*** set character to auto because he is charmed ***/
   } else if (q[up] > -1) {
     if (monster[q[up] - 10].stamina < 1)
       goto getnew; /*** not in battle ******/
-    if (monster[q[up] - 10].condition[1])
+    if (monster[q[up] - 10].condition[COND_HELPLESS])
       goto getnew; /**** helpless ***/
   }
 
@@ -224,21 +224,21 @@ getnew:
     undox = pos[charup][0] + fieldx; /**** getundo coordinates ****/
     undoy = pos[charup][1] + fieldy;
 
-    if (c[charup].condition[0]) /**** running ****/
+    if (c[charup].condition[COND_RUNS_AWAY]) /**** running ****/
     {
-      if (!c[charup].condition[25])
-        c[charup].condition[25] = TRUE;
+      if (!c[charup].condition[COND_ANIMATED])
+        c[charup].condition[COND_ANIMATED] = TRUE;
     }
 
-    if (c[charup].condition[25] > -1) {
-      if (c[charup].condition[29]) /*********** confused **************/
+    if (c[charup].condition[COND_ANIMATED] > -1) {
+      if (c[charup].condition[COND_CONFUSED]) /*********** confused **************/
       {
         temp = Rand(100);
         if (temp < 40) {
           if ((Rand(2) == 1) && (!c[charup].traiter)) {
             c[charup].traiter++;
-            if (!c[charup].condition[25])
-              c[charup].condition[25] = TRUE;
+            if (!c[charup].condition[COND_ANIMATED])
+              c[charup].condition[COND_ANIMATED] = TRUE;
             numenemy++;
             killparty++;
           } else if ((Rand(2) == 2) && (c[charup].traiter)) {
@@ -247,9 +247,9 @@ getnew:
             killparty--;
           }
         } else if (temp > 60)
-          c[charup].condition[0]++;
+          c[charup].condition[COND_RUNS_AWAY]++;
         else {
-          c[charup].condition[1]++;
+          c[charup].condition[COND_HELPLESS]++;
           goto getnew;
         }
       }
@@ -266,7 +266,7 @@ getnew:
       c[charup].attacks = 0;
     c[charup].attacks += c[charup].normattacks + c[charup].attackbonus;
 
-    if (c[charup].condition[23])
+    if (c[charup].condition[COND_SPEEDY])
       c[charup].attacks += 4; /****** haste ****/
 
     if (!inwindow(charup))
@@ -274,14 +274,14 @@ getnew:
     else
       centerfield(5 + (2 * screensize), 5 + screensize);
 
-    if (!c[charup].condition[25])
+    if (!c[charup].condition[COND_ANIMATED])
       sound(138);
   } else {
     monsterturn = 1;
     monsterup = q[up] - 10;
     monster[monsterup].attacknum = 0;
 
-    if (monster[monsterup].condition[29]) /******* confusion *****/
+    if (monster[monsterup].condition[COND_CONFUSED]) /******* confusion *****/
     {
       temp = Rand(100);
       if (temp < 40) {
@@ -293,19 +293,19 @@ getnew:
           numenemy--;
         }
       } else if (temp > 60)
-        monster[monsterup].condition[0]++;
+        monster[monsterup].condition[COND_RUNS_AWAY]++;
       else {
-        monster[monsterup].condition[1]++;
+        monster[monsterup].condition[COND_HELPLESS]++;
         goto getnew;
       }
     }
 
     monster[monsterup].movement = monster[monsterup].movementmax;
-    monster[monsterup].movement -= monster[monsterup].condition[2]; /** tangled **/
-    if (monster[monsterup].condition[6])
+    monster[monsterup].movement -= monster[monsterup].condition[COND_TANGLED]; /** tangled **/
+    if (monster[monsterup].condition[COND_SLOW])
       monster[monsterup].movement /= 2; /** slow **/
 
-    if (monster[monsterup].condition[23]) /***** Haste***/
+    if (monster[monsterup].condition[COND_SPEEDY]) /***** Haste***/
     {
 
       monster[monsterup].movement *= 2;
@@ -347,7 +347,7 @@ getnew:
     }
 
     if (percent < monster[monsterup].runpercent) {
-      monster[monsterup].condition[0] = -1;
+      monster[monsterup].condition[COND_RUNS_AWAY] = -1;
       showresults(monsterup + 10, -6, 0); /************* run away **************/
     }
   }

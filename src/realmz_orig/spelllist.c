@@ -18,7 +18,7 @@ short spelllist(short who, short special) {
     up = 0;
 
   if (who <= charnum) {
-    if ((c[who].condition[30]) && (Rand(100) < 34))
+    if ((c[who].condition[COND_REFLECTING_SPELLS]) && (Rand(100) < 34))
       who = q[up];
   }
 
@@ -100,14 +100,14 @@ donefumble:
     if (who < 9) {
       damage = adjdam = 10 + c[who].stamina;
       if (special == 27)
-        c[who].condition[26] = -1;
+        c[who].condition[COND_TURNED_TO_STONE] = -1;
     } else
       damage = adjdam = 10 + monster[who - 10].stamina;
   }
 
-  if ((special == 64) && (!c[who].condition[26]) && ((c[who].stamina < -9) || (c[who].condition[25]))) /**** ressurrect *****/
+  if ((special == 64) && (!c[who].condition[COND_TURNED_TO_STONE]) && ((c[who].stamina < -9) || (c[who].condition[COND_ANIMATED]))) /**** ressurrect *****/
   {
-    c[who].condition[25] = 0;
+    c[who].condition[COND_ANIMATED] = 0;
     c[who].stamina = -9;
     c[who].spec[2] -= 2;
     needupdate = TRUE;
@@ -117,11 +117,11 @@ donefumble:
   if ((special == 53) || (special == 54)) /***** Soul Bind *****/
   {
     if (who < 9) {
-      c[who].condition[1] += duration;
+      c[who].condition[COND_HELPLESS] += duration;
       c[who].movement = c[who].attacks = 0;
       updatechar(who, 3);
     } else {
-      monster[who - 10].condition[1] += duration;
+      monster[who - 10].condition[COND_HELPLESS] += duration;
       monster[who - 10].movement = 0;
     }
   }
@@ -149,7 +149,7 @@ donefumble:
 
   if (special == 62) /************** remove curse *****************/
   {
-    c[who].condition[3] = 0;
+    c[who].condition[COND_CURSED] = 0;
     for (t = 0; t < c[who].numitems; t++) {
       loaditem(c[who].items[t].id);
       if ((item.iscurse) && (c[who].items[t].equip))
@@ -421,7 +421,7 @@ donefumble:
 
   if ((special == 26) && (c[who].stamina < -9)) /***** animate ****/
   {
-    c[who].condition[25] = -1;
+    c[who].condition[COND_ANIMATED] = -1;
     c[who].stamina = c[who].staminamax / 4;
     updatechar(who, 3);
   }
@@ -429,11 +429,11 @@ donefumble:
   if (special == 10) /******* poison *****/
   {
     if (who < 9) {
-      if (c[who].condition[25] < 0)
-        c[who].condition[9] = 0;
+      if (c[who].condition[COND_ANIMATED] < 0)
+        c[who].condition[COND_POISONED] = 0;
       updatechar(who, 3);
-    } else if ((monster[who - 10].spellimmune[5]) || (monster[who - 10].condition[25]))
-      monster[who - 10].condition[9] = 0;
+    } else if ((monster[who - 10].spellimmune[5]) || (monster[who - 10].condition[COND_ANIMATED]))
+      monster[who - 10].condition[COND_POISONED] = 0;
   }
 
   if ((special == 24) || (special == 91)) /******* haste/age *****/

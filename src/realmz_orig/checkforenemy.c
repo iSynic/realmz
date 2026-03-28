@@ -76,7 +76,7 @@ newenemy:
     num = 0;
 
     if (q[up] < 9) {
-      if (!c[charup].condition[24]) {
+      if (!c[charup].condition[COND_INVISIBLE]) {
         for (t = 0; t < maxloop; t++) {
           if ((trace[1][t]) && (!trace[2][t]))
             enemy[num++] = t;
@@ -84,7 +84,7 @@ newenemy:
         if (num)
           behind = TRUE;
       }
-    } else if (!monster[monsterup].condition[24]) {
+    } else if (!monster[monsterup].condition[COND_INVISIBLE]) {
       for (t = 0; t < maxloop; t++) {
         if ((trace[1][t]) && (!trace[2][t]))
           enemy[num++] = t;
@@ -96,7 +96,7 @@ newenemy:
 
   for (ttt = 0; ttt < num; ttt++) {
     if (enemy[ttt] < 9) {
-      if (((c[enemy[ttt]].guarding) || (code == 2)) && (!c[enemy[ttt]].condition[1])) {
+      if (((c[enemy[ttt]].guarding) || (code == 2)) && (!c[enemy[ttt]].condition[COND_HELPLESS])) {
         tag = TRUE;
         combatupdate2(enemy[ttt]);
         c[enemy[ttt]].guarding = FALSE;
@@ -106,7 +106,7 @@ newenemy:
         }
       }
     } else {
-      if (((monster[enemy[ttt] - 10].guarding) || (code == 2)) && (!monster[enemy[ttt] - 10].condition[1])) {
+      if (((monster[enemy[ttt] - 10].guarding) || (code == 2)) && (!monster[enemy[ttt] - 10].condition[COND_HELPLESS])) {
         tag = TRUE;
         combatupdate2(enemy[ttt]);
         monster[enemy[ttt] - 10].guarding = FALSE;

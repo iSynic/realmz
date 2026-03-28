@@ -187,17 +187,17 @@ void plotportrait(short tempid, Rect where, short class, short who) {
 
     poison = physical = charm = movement = magic = attdef = 0;
 
-    if ((c[who].condition[9]) || (c[who].condition[28]) || (c[who].condition[2]))
+    if ((c[who].condition[COND_POISONED]) || (c[who].condition[COND_DISEASED]) || (c[who].condition[COND_TANGLED]))
       poison = TRUE;
-    if ((c[who].condition[25] < 0) || (doauto[who]) || (c[who].traiter))
+    if ((c[who].condition[COND_ANIMATED] < 0) || (doauto[who]) || (c[who].traiter))
       charm = TRUE;
-    if ((c[who].condition[0]) || (c[who].condition[2]) || (c[who].condition[6]))
+    if ((c[who].condition[COND_RUNS_AWAY]) || (c[who].condition[COND_TANGLED]) || (c[who].condition[COND_SLOW]))
       movement = TRUE;
-    if ((c[who].condition[1]) || (c[who].condition[26]) || (c[who].condition[27]))
+    if ((c[who].condition[COND_HELPLESS]) || (c[who].condition[COND_TURNED_TO_STONE]) || (c[who].condition[COND_BLIND]))
       physical = TRUE;
-    if ((c[who].condition[5]) || (c[who].condition[29]) || (c[who].condition[39]))
+    if ((c[who].condition[COND_STUPID]) || (c[who].condition[COND_CONFUSED]) || (c[who].condition[COND_SILENCED]))
       magic = TRUE;
-    if ((c[who].condition[36]) || (c[who].condition[37]) || (c[who].condition[3]))
+    if ((c[who].condition[COND_HINDERED_ATTACKS]) || (c[who].condition[COND_HINDERED_DEFENSE]) || (c[who].condition[COND_CURSED]))
       attdef = TRUE;
 
     if (!noshow) {

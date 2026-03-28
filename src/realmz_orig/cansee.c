@@ -93,7 +93,7 @@ short cansee2(long fromx, long fromy) {
           if (hit > 399)
             hit = basetile[lastpix]; // Myriad
 
-          if (!(partycondition[4]) && (hit > 0)) {
+          if (!(partycondition[PARTY_COND_WIZARD_EYE]) && (hit > 0)) {
 #if CHECK_ILLEGAL_ACCESS > 0
             if (hit >= 402 || hit < 0)
               AcamErreur("cansee2");
@@ -153,7 +153,7 @@ short cansee2(long fromx, long fromy) {
           if (hit > 399)
             hit = basetile[lastpix]; // Myriad
 
-          if ((!partycondition[4]) && (hit > 0)) {
+          if ((!partycondition[PARTY_COND_WIZARD_EYE]) && (hit > 0)) {
             if ((mapstats[hit].los == 1) && (curx != fromx))
               tt = 10;
           }
