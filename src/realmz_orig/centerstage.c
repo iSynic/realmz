@@ -4,6 +4,9 @@
 /************************** centerstage **********************/
 void centerstage(short way) {
   short who;
+  // NOTE(fuzziqersoftware): It's possible for the do...while loop below to never terminate, if way is 0 (which happes
+  // often) and q[aimindex] == -1. I've added this variable so the loop will always eventually terminate.
+  short count = 0;
 
   // if ((who < 0) || (who > maxloop)) return; Myriad @@@ ????????????????????
 
@@ -13,6 +16,8 @@ void centerstage(short way) {
       aimindex = 1;
     if (aimindex < 1)
       aimindex = maxloopminus;
+    if (++count > maxloopminus)
+      return; // all slots empty (or way==0 with invalid aimindex)
   } while (q[aimindex] == -1);
 
   who = q[aimindex];
