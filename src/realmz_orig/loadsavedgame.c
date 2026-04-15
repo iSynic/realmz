@@ -637,7 +637,10 @@ skipnotes:
     scratch(86);
   if ((op = MyrFopen(":Data Files:CD", "w+b")) == NULL)
     scratch(87);
-  while ((fread(&door, sizeof door, 1, fp) == 1) && (count < 20)) {
+  // NOTE(fuzziqersoftware): There was previously an `&& (count < 20)` condition here, but some scenarios have more
+  // than 20 land levels, so we will fail to load some levels with that condition. (No scenario I've seen has anywhere
+  // close to 20 dungeon levels, but it seems unwise to have an arbitrary limit here anyway.)
+  while (fread(&door, sizeof door, 1, fp) == 1) {
     count++;
 
     fread(&field, sizeof field, 1, fp);
@@ -660,7 +663,9 @@ skipnotes:
     scratch(91);
   if ((op = MyrFopen(":Data Files:CL", "w+b")) == NULL)
     scratch(92);
-  while ((fread(&door, sizeof door, 1, fp) == 1) && (count < 20)) {
+  // NOTE(fuzziqersoftware): There was previously an `&& (count < 20)` condition here, but some scenarios have more
+  // than 20 land levels, so we will fail to load some levels with that condition.
+  while (fread(&door, sizeof door, 1, fp) == 1) {
     count++;
 
     fread(&field, sizeof field, 1, fp);

@@ -650,6 +650,10 @@ public:
   }
 
   int16_t track_control_part(Point pt) {
+    if (pt.h < this->rect.left || pt.h >= this->rect.right ||
+        pt.v < this->rect.top || pt.v >= this->rect.bottom) {
+      return 0;
+    }
     auto slider_offset = get_slider_offset();
     auto w = get_width();
     auto local_point = pt;
@@ -658,7 +662,7 @@ public:
 
     if (local_point.v <= w) {
       return kControlUpButtonPart;
-    } else if (local_point.v >= this->rect.bottom - w) {
+    } else if (local_point.v >= get_height() - w) {
       return kControlDownButtonPart;
     } else if (local_point.v >= slider_offset && local_point.v <= (slider_offset + w)) {
       return kControlIndicatorPart;

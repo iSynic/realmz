@@ -23,7 +23,7 @@ short newland(int32_t x, int32_t y, short mode, short modecode, short data) {
   PicHandle picture = NIL;
   int tempholdovername; //** fantasoft v7.1
 
-  memoryspell = collideflag = 0;
+  stackindex = memoryspell = collideflag = 0;
 
   if (mode == -1)
     goto startover; /***** monster macro *****/
