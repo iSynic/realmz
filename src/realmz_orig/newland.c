@@ -386,7 +386,7 @@ startover:
             monster[monsterup].weapon = 0;
             sound(-10121);
             sound(-655);
-            combatupdate2(monsterup);
+            combatupdate2(monsterup + 10);
             showresults(monsterup, -46, monsterup);
           } else
             return (0);
