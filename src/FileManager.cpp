@@ -1,6 +1,7 @@
 #include "FileManager.h"
 
 #include <SDL3/SDL_storage.h>
+#include <algorithm>
 #include <filesystem>
 #include <phosg/Strings.hh>
 
@@ -187,16 +188,22 @@ std::vector<std::string> mac_list_directory(const std::string& mac_path) {
   std::string user_filename = userdata_filename_for_mac_filename(mac_path);
   SDL_CreateDirectory(user_filename.c_str());
 
-  if (!std::filesystem::is_directory(user_filename)) {
-    fm_log.info_f("Cannot list directory {} (host: {}) because it is not a directory", mac_path, user_filename);
-    return {};
-  }
-
   std::vector<std::string> ret;
-  for (const auto& item : std::filesystem::directory_iterator{user_filename}) {
-    ret.emplace_back(item.path().filename().string());
+  // Read the userdata directory first, so user files override bundled ones of
+  // the same name (mirrors mac_fopen's read fallback semantics).
+  for (const auto& base : {user_filename, host_filename_for_mac_filename(mac_path, false)}) {
+    if (!std::filesystem::is_directory(base)) {
+      fm_log.info_f("Skipping {} because it is not a directory", base);
+      continue;
+    }
+    for (const auto& item : std::filesystem::directory_iterator{base}) {
+      auto name = item.path().filename().string();
+      if (std::find(ret.begin(), ret.end(), name) == ret.end()) {
+        ret.emplace_back(std::move(name));
+      }
+    }
   }
-  fm_log.info_f("Listing directory {} (host: {}) yielded {} items", mac_path, user_filename, ret.size());
+  fm_log.info_f("Listing directory {} yielded {} items", mac_path, ret.size());
   return ret;
 }
 
