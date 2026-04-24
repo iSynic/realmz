@@ -301,5 +301,4 @@ void MM_SetItemIcon(MenuHandle theMenu, int16_t item, int16_t iconID) {
     return;
   }
   menu->items.at(item - 1).icon_id = iconID;
-  mm.sync();
 }
