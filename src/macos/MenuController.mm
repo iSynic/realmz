@@ -49,7 +49,11 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
       const uint32_t* srcRow = src + (y / kMenuIconUpscale) * srcW;
       uint32_t* dstRow = dst + y * dstW;
       for (NSInteger x = 0; x < dstW; x++) {
-        dstRow[x] = __builtin_bswap32(srcRow[x / kMenuIconUpscale]);
+        uint32_t pixel = srcRow[x / kMenuIconUpscale];
+        if constexpr (!phosg::IS_BIG_ENDIAN) {
+          pixel = __builtin_bswap32(pixel);
+        }
+        dstRow[x] = pixel;
       }
     }
     [rep setSize:NSMakeSize(srcW, srcH)];
