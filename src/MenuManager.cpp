@@ -205,7 +205,6 @@ void SetMenuItemText(MenuHandle theMenu, uint16_t item, ConstStr255Param itemStr
     return;
   }
   menu->items.at(item - 1).name = string_for_pstr<256>(itemString);
-  mm.sync();
 }
 
 int32_t MenuSelect(Point startPt) {
@@ -224,7 +223,6 @@ void DisableItem(MenuHandle theMenu, uint16_t item) {
   } else {
     mm_log.warning_f("Attempted to disable MENU:{} item {}, but it doesn't exist", menu->menu_id, item);
   }
-  mm.sync();
 }
 
 void EnableItem(MenuHandle theMenu, uint16_t item) {
@@ -236,7 +234,6 @@ void EnableItem(MenuHandle theMenu, uint16_t item) {
   } else {
     mm_log.warning_f("Attempted to enable MENU:{} item {}, but it doesn't exist", menu->menu_id, item);
   }
-  mm.sync();
 }
 
 void CheckItem(MenuHandle theMenu, uint16_t item, Boolean checked) {
@@ -246,7 +243,24 @@ void CheckItem(MenuHandle theMenu, uint16_t item, Boolean checked) {
   } else {
     menu->items.at(item - 1).checked = checked;
   }
-  mm.sync();
+}
+
+void SetItemMark(MenuHandle theMenu, int16_t item, int16_t markChar) {
+  auto menu = mm.get_menu(theMenu);
+  if (item < 1 || item > static_cast<int16_t>(menu->items.size())) {
+    mm_log.warning_f("Attempted to set mark of MENU:{} item {}, but it doesn't exist", menu->menu_id, item);
+    return;
+  }
+  menu->items.at(item - 1).mark_character = static_cast<char>(markChar);
+}
+
+void GetItemMark(MenuHandle theMenu, int16_t item, int16_t* markChar) {
+  auto menu = mm.get_menu(theMenu);
+  if (item < 1 || item > static_cast<int16_t>(menu->items.size())) {
+    *markChar = 0;
+    return;
+  }
+  *markChar = static_cast<int16_t>(menu->items.at(item - 1).mark_character);
 }
 
 void AppendMenu(MenuHandle menu, ConstStr255Param data) {

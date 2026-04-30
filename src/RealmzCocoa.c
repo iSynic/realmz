@@ -105,10 +105,6 @@ int16_t OpenDeskAcc(ConstStr255Param deskAccName) {
   return 0;
 }
 
-void SetItemMark(MenuHandle theMenu, int16_t item, int16_t markChar) {
-  // TODO
-}
-
 void EndUpdate(WindowPtr theWindow) {
 }
 
@@ -142,9 +138,6 @@ void SysBeep(uint16_t duration) {
 }
 
 void UnlockPixels(PixMapHandle pm) {
-}
-
-void GetItemMark(MenuHandle theMenu, int16_t item, int16_t* markChar) {
 }
 
 void LMSetMBarHeight(int16_t h) {

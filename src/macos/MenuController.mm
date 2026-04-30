@@ -88,8 +88,12 @@ NSMenu* MCCreateSubMenu(NSString* title, const Menu& menuRes, const std::list<st
         id menuIdentifier = [[MCMenuItemIdentifier alloc] initWithRawIds:menu.menu_id itemId:itemId];
         [subMenuItem setRepresentedObject:menuIdentifier];
         subMenuItem.enabled = subMenuItemRes.enabled;
-        if (subMenuItemRes.checked) {
+        bool mark_is_submenu_link = (subMenuItemRes.key_equivalent == 0x1B);
+        char mark = mark_is_submenu_link ? 0 : subMenuItemRes.mark_character;
+        if (subMenuItemRes.checked || mark == 19) {
           subMenuItem.state = NSControlStateValueOn;
+        } else if (mark != 0) {
+          subMenuItem.state = NSControlStateValueMixed;
         }
 
         // Submenu ids are specified by the itemMark field if the itemCmd field has

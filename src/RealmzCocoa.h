@@ -183,8 +183,6 @@ int16_t DIBadMount(Point where, int32_t evtMessage);
 #define GetWindowPort(x) (x)
 #define BitAnd(x, y) ((x) & (y))
 int16_t OpenDeskAcc(ConstStr255Param deskAccName);
-void SetItemMark(MenuHandle theMenu, int16_t item, int16_t markChar);
-void GetItemMark(MenuHandle theMenu, int16_t item, int16_t* markChar);
 #define GetMBarHeight() 20
 void LMSetMBarHeight(int16_t h);
 void CopyRgn(RgnHandle srcRgn, RgnHandle dstRgn);

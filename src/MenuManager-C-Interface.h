@@ -27,6 +27,8 @@ int32_t MenuSelect(Point startPt);
 void DisableItem(MenuHandle theMenu, uint16_t item);
 void EnableItem(MenuHandle theMenu, uint16_t item);
 void CheckItem(MenuHandle theMenu, uint16_t item, Boolean checked);
+void SetItemMark(MenuHandle theMenu, int16_t item, int16_t markChar);
+void GetItemMark(MenuHandle theMenu, int16_t item, int16_t* markChar);
 int32_t PopUpMenuSelect(MenuHandle menu, int16_t top, int16_t left, int16_t popUpItem);
 void AppendMenu(MenuHandle menu, ConstStr255Param data);
 int16_t CountMItems(MenuHandle theMenu);

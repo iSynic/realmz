@@ -1050,5 +1050,8 @@ short HandleMenuChoice(void) {
       }
       break;
   }
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(chromancer): We have to force a sync here or we end up with menu items off by one. */
+  DrawMenuBar();
   return (0);
 }
