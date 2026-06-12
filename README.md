@@ -24,7 +24,17 @@ On Windows, you can either use the installer wizard for automatic installation, 
 - Attach the crash report and archive of your userdata directory
 - List the steps necessary to reproduce the bug
 
-# Building on Mac
+# Contributing
+
+Pull requests are welcome. Please keep the following in mind as you author changes:
+
+ - When modifying code under `src/realmz_org`, please include comments detailing changes from the original
+   implementation ([example](https://github.com/Realmz-Castle/realmz/blob/fc143ecb7d54b1f7be3ff7e714fea450297b8bb9/src/realmz_orig/warn.c#L61)).
+ - Gameplay-affecting bug fixes should focus on original intent as defined by the game's manual or the context of the
+   surrounding code (#180).
+ - Changes that address code readability (e.g., adding named constants for magic numbers) are welcome (#183).
+
+## Building on Mac
 
 - Download dependencies as git submodules
   - `git submodule init`
@@ -33,7 +43,7 @@ On Windows, you can either use the installer wizard for automatic installation, 
 - `cmake --preset macOS`
 - `cmake --build --preset macOS`
 
-# Cross-compiling for Windows from Mac
+## Cross-compiling for Windows from Mac
 
 - Install [llvm-mingw](https://github.com/mstorsjo/llvm-mingw)
   - Download latest llvm-mingw-$DATE-ucrt-macos-universal.tar.xz
