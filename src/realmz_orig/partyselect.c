@@ -60,8 +60,13 @@ void partyselect(short mode) {
 
   fclose(fp);
 
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(jpetrie): Originally, maxlevel was set to 999 here to indicate "no level cap" for the scenario. However, this
+   * prevented extremely high level parties who legitimately had 1000 levels or more from starting a game, so now 0 is
+   * used to indicate that there are no level restrictions.
+   */
   if (doreg())
-    maxlevel = 999;
+    maxlevel = 0;
 
   charselectnew = 0;
 
@@ -155,7 +160,10 @@ shortupdate:
   DialogNum(75, totallevel);
   DialogNumLong(74, reclevel);
 
-  if (maxlevel == 999)
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(jpetrie): This test was changed from 999 to 0 to align with the level restriction change above.
+   */
+  if (maxlevel == 0)
     MyrCDiStr(77, (StringPtr) "None");
   else
     DialogNumLong(77, maxlevel);
@@ -587,7 +595,12 @@ shortupdate:
     {
       temp = GetDialogNum(filepick + 40);
 
-      if ((total + temp > maxlevel) && (!mode)) {
+      /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+       * NOTE(jpetrie): Originally, when maxlevel = 999 meant "no level cap," very high level parties could still
+       * trigger the "level limit exceeded" error here. Adding an explicit check for the "no level cap" value prevents
+       * that from happening.
+       */
+      if (maxlevel != 0 && (total + temp > maxlevel) && (!mode)) {
         ForeColor(blackColor);
         BackColor(whiteColor);
         warn(64);
