@@ -15,8 +15,6 @@
 static phosg::PrefixedLogger sm_log("[SoundManager] ");
 
 constexpr size_t OUTPUT_SAMPLE_RATE = 48000;
-constexpr uint32_t SYNC_SOUND_GRACE_MS = 100;
-constexpr uint32_t SYNC_SOUND_MAX_WAIT_MS = 5000;
 
 class SoundManager {
 public:
@@ -74,13 +72,13 @@ public:
     return channel;
   }
 
-  bool play_sound(SDL_AudioStream* sdlAudioStream, Handle data_handle, uint32_t* duration_ms) {
+  void play_sound(SDL_AudioStream* sdlAudioStream, Handle data_handle, bool async) {
     std::shared_ptr<const Sound> sound;
     try {
       sound = this->sound_for_handle(data_handle);
     } catch (const std::exception& e) {
       sm_log.warning_f("Can't find or decode sound: {}", e.what());
-      return false;
+      return;
     }
 
     // SDL_PutAudioStreamData takes an int to represent the audio stream size in bytes. It's unlikely that any sound
@@ -88,53 +86,20 @@ public:
     // is safe.
     if (sound->data.size() > std::numeric_limits<int>::max()) {
       sm_log.warning_f("Audio stream data is too large ({} bytes)", sound->data.size());
-      return false;
-    }
-
-    if (duration_ms != nullptr) {
-      *duration_ms = sound->duration_ms();
+      return;
     }
 
     if (!SDL_PutAudioStreamData(sdlAudioStream, sound->data.data(), static_cast<int>(sound->data.size()))) {
       sm_log.warning_f("Could not put audio stream data: {}", SDL_GetError());
-      return false;
-    }
-    return true;
-  }
-
-  void wait_for_playback(SDL_AudioStream* sdlAudioStream, uint32_t duration_ms) {
-    if (!SDL_FlushAudioStream(sdlAudioStream)) {
-      sm_log.warning_f("Could not flush audio stream: {}", SDL_GetError());
       return;
     }
 
-    const uint64_t timeout_ms = std::min<uint64_t>(
-        static_cast<uint64_t>(duration_ms) + SYNC_SOUND_GRACE_MS,
-        SYNC_SOUND_MAX_WAIT_MS);
-    const uint64_t deadline = SDL_GetTicks() + timeout_ms;
-
-    for (;;) {
-      const int queued = SDL_GetAudioStreamQueued(sdlAudioStream);
-      if (queued < 0) {
-        sm_log.warning_f("Could not query audio stream queue: {}", SDL_GetError());
+    if (!async) {
+      if (!SDL_FlushAudioStream(sdlAudioStream)) {
+        sm_log.warning_f("Could not flush audio stream: {}", SDL_GetError());
         return;
       }
-      const int available = SDL_GetAudioStreamAvailable(sdlAudioStream);
-      if (available < 0) {
-        sm_log.warning_f("Could not query available audio stream data: {}", SDL_GetError());
-        return;
-      }
-      if ((queued == 0) && (available == 0)) {
-        return;
-      }
-      if (SDL_GetTicks() >= deadline) {
-        sm_log.warning_f(
-            "Timed out waiting for synchronous sound playback ({} bytes queued, {} bytes available)",
-            queued,
-            available);
-        return;
-      }
-      SDL_Delay(1);
+      SDL_Delay(sound->duration_ms());
     }
   }
 
@@ -282,13 +247,7 @@ OSErr SndPlay(SndChannelPtr chan, Handle data_handle, Boolean async) {
   if (data_handle == nullptr) {
     return resProblem;
   }
-  uint32_t duration_ms = 0;
-  if (!sm.play_sound(chan->sdlAudioStream, data_handle, async ? nullptr : &duration_ms)) {
-    return noErr;
-  }
-  if (!async) {
-    sm.wait_for_playback(chan->sdlAudioStream, duration_ms);
-  }
+  sm.play_sound(chan->sdlAudioStream, data_handle, async != 0);
   return noErr;
 }
 
