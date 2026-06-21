@@ -99,7 +99,9 @@ public:
         sm_log.warning_f("Could not flush audio stream: {}", SDL_GetError());
         return;
       }
-      SDL_Delay(sound->duration_ms());
+      while (SDL_GetAudioStreamAvailable(sdlAudioStream) > 0) {
+        SDL_Delay(10);
+      }
     }
   }
 
@@ -124,19 +126,6 @@ private:
     uint8_t num_channels;
     uint8_t bits_per_sample;
     std::string data;
-
-    uint32_t duration_ms() const {
-      const size_t bytes_per_sample = this->bits_per_sample / 8;
-      if ((bytes_per_sample == 0) || (this->num_channels == 0) || (this->sample_rate == 0)) {
-        return 0;
-      }
-
-      const size_t bytes_per_frame = bytes_per_sample * this->num_channels;
-      const size_t num_frames = this->data.size() / bytes_per_frame;
-      return static_cast<uint32_t>(
-          (static_cast<uint64_t>(num_frames) * 1000 + this->sample_rate - 1) /
-          this->sample_rate);
-    }
   };
 
   std::shared_ptr<const Sound> sound_for_handle(Handle data_handle) {
