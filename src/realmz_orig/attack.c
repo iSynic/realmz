@@ -69,6 +69,7 @@ short attack(short chare, short mon) {
       }
     }
     damage += item.damage; /******* magic plus ****/
+    att += 5 * item.damage; /******* magic plus to hit; matches attack2 and resolvespell ****/
     if (item.sp1 == 121)
       att += 5 * item.damage; /******* double to hit weapon ****/
 
