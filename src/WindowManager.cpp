@@ -272,6 +272,10 @@ public:
   bool enabled;
   std::shared_ptr<Control> control; // May be null
 
+  // For scrollbars: which part is currently held down (0 = none). Set while
+  // TrackControl tracks a press so the held arrow can be drawn pushed in.
+  int16_t pressed_part = 0;
+
   static std::unordered_map<size_t, std::weak_ptr<DialogItem>> all_items;
 
   static std::shared_ptr<DialogItem> get_item_by_handle(size_t handle) {
@@ -509,42 +513,190 @@ public:
           break;
         }
         RGBColor prev_color;
-        RGBColor prev_bg_color;
         GetForeColor(&prev_color);
-        GetBackColor(&prev_bg_color);
 
-        auto r = this->rect;
+        const auto r = this->rect;
+        const auto w = get_width(); // vertical scrollbar: width drives the thumb and arrow heights
+        const auto slider_offset = get_slider_offset();
 
-        auto bg_color = RGBColor{.red = 0x6666, .green = 0x6666, .blue = 0x6666};
-        RGBBackColor(&bg_color);
-        port.erase_rect(r);
+        // Reproduce the classic Mac Appearance ("platinum") scrollbar pixel for
+        // pixel. The pieces are painted with foreground fills (not erase_rect),
+        // because the shop window installs a stone background pixel pattern
+        // (BackPixPat) and erase_rect honors that pattern over the background
+        // color. The bevel layout was taken from the original 1994 build. Color
+        // values are stored pre-gamma (Mac OS 9 internal framebuffer level) so
+        // they render correctly when 2.59 color correction is active; without
+        // correction they match the raw Mac OS 9 output rather than the
+        // SheepShaver-presented output.
+        const RGBColor black = {.red = 0x0000, .green = 0x0000, .blue = 0x0000};
+        const RGBColor track_fill = {.red = 0xA9A9, .green = 0xA9A9, .blue = 0xA9A9};
+        const RGBColor track_shadow_dark = {.red = 0x7777, .green = 0x7777, .blue = 0x7777}; // recessed shadow, darkest
+        const RGBColor track_shadow = {.red = 0x8888, .green = 0x8888, .blue = 0x8888};
+        const RGBColor track_highlight = {.red = 0xBABA, .green = 0xBABA, .blue = 0xBABA};
+        const RGBColor track_highlight_light = {.red = 0xCCCC, .green = 0xCCCC, .blue = 0xCCCC}; // recessed highlight, lightest
+        const RGBColor thumb_highlight = {.red = 0xEEEE, .green = 0xEEEE, .blue = 0xEEEE}; // thumb top-left highlight
+        const RGBColor thumb_light = {.red = 0xCCCC, .green = 0xCCCC, .blue = 0xFFFF}; // thumb light periwinkle
+        const RGBColor thumb_mid = {.red = 0x9999, .green = 0x9999, .blue = 0xFFFF}; // thumb mid periwinkle
+        const RGBColor thumb_shadow = {.red = 0x6666, .green = 0x6666, .blue = 0xCCCC}; // thumb bottom-right shadow
+        const RGBColor thumb_grip = {.red = 0x3434, .green = 0x3434, .blue = 0x9999}; // thumb grip line
+        // Pressed thumb: the same ramp shifted one step darker while it is dragged.
+        const RGBColor thumb_highlight_pressed = {.red = 0xCCCC, .green = 0xCCCC, .blue = 0xFFFF};
+        const RGBColor thumb_light_pressed = {.red = 0x9999, .green = 0x9999, .blue = 0xFFFF};
+        const RGBColor thumb_mid_pressed = {.red = 0x6666, .green = 0x6666, .blue = 0xCCCC};
+        const RGBColor thumb_shadow_pressed = {.red = 0x3434, .green = 0x3434, .blue = 0x9999};
+        const RGBColor thumb_grip_pressed = {.red = 0x0000, .green = 0x0000, .blue = 0x5555};
+        const RGBColor arrow_face = {.red = 0xDDDD, .green = 0xDDDD, .blue = 0xDDDD};
+        const RGBColor arrow_highlight = {.red = 0xFFFF, .green = 0xFFFF, .blue = 0xFFFF}; // arrow top-left highlight
+        const RGBColor arrow_shadow = {.red = 0xBABA, .green = 0xBABA, .blue = 0xBABA}; // arrow bottom-right shadow
+        // Pressed (pushed-in) arrow palette: darker face with the bevel inverted.
+        const RGBColor arrow_face_pressed = {.red = 0x7777, .green = 0x7777, .blue = 0x7777};
+        const RGBColor arrow_highlight_pressed = {.red = 0x5555, .green = 0x5555, .blue = 0x5555}; // top-left, now dark
+        const RGBColor arrow_shadow_pressed = {.red = 0x9999, .green = 0x9999, .blue = 0x9999}; // bottom-right, now light
 
-        ForeColor(blackColor);
-        auto w = get_width();
-        auto h = get_height();
+        // Painter primitives for the bar: a single pixel, a horizontal run
+        // [x0..x1], a vertical run [y0..y1], and a filled box (right/bottom
+        // exclusive). These are real member functions rather than captured
+        // lambdas, and they take plain ints so the pixel arithmetic at the call
+        // sites stays cast-free; the narrowing to the Rect's int16_t fields
+        // happens here, in one place.
+        struct Painter {
+          CCGrafPort& port;
+          void pixel(int x, int y, const RGBColor& c) const {
+            RGBForeColor(&c);
+            port.fill_rect(Rect{.top = static_cast<int16_t>(y), .left = static_cast<int16_t>(x),
+                .bottom = static_cast<int16_t>(y + 1), .right = static_cast<int16_t>(x + 1)});
+          }
+          void hrun(int x0, int x1, int y, const RGBColor& c) const {
+            RGBForeColor(&c);
+            port.fill_rect(Rect{.top = static_cast<int16_t>(y), .left = static_cast<int16_t>(x0),
+                .bottom = static_cast<int16_t>(y + 1), .right = static_cast<int16_t>(x1 + 1)});
+          }
+          void vrun(int x, int y0, int y1, const RGBColor& c) const {
+            RGBForeColor(&c);
+            port.fill_rect(Rect{.top = static_cast<int16_t>(y0), .left = static_cast<int16_t>(x),
+                .bottom = static_cast<int16_t>(y1 + 1), .right = static_cast<int16_t>(x + 1)});
+          }
+          void box(int left, int top, int right, int bottom, const RGBColor& c) const {
+            RGBForeColor(&c);
+            port.fill_rect(Rect{.top = static_cast<int16_t>(top), .left = static_cast<int16_t>(left),
+                .bottom = static_cast<int16_t>(bottom), .right = static_cast<int16_t>(right)});
+          }
+        };
+        Painter paint{port};
 
-        auto top_arrow = r;
-        top_arrow.bottom = r.top + w;
-        port.fill_rect(top_arrow);
+        const int bx0 = r.left, bx1 = r.right - 1; // black border columns
+        const int by0 = r.top, by1 = r.bottom - 1; // black border rows
+        const int ix0 = bx0 + 1, ix1 = bx1 - 1; // interior columns
+        const int th_h = w; // thumb border-to-border height
+        const int ar_h = w - 1; // each arrow button border-to-border height
+        const int up_top = by1 - 2 * ar_h; // up-arrow top border row
+        const int dn_top = up_top + ar_h; // down-arrow top border row
+        const int cx = (ix0 + ix1 + 1) / 2; // glyph/grip center column
+        const int thumb_top = r.top + slider_offset;
 
-        auto bottom_arrow = r;
-        bottom_arrow.top = r.bottom - w;
-        port.fill_rect(bottom_arrow);
+        // Recessed track well: a flat C0 channel with a 2px dark bevel on the
+        // left, a 2px light bevel on the right, run the full interior height.
+        paint.box(ix0, by0 + 1, ix1 + 1, by1, track_fill);
+        paint.vrun(ix0, by0 + 1, by1 - 1, track_shadow_dark);
+        paint.vrun(ix0 + 1, by0 + 1, by1 - 1, track_shadow);
+        paint.vrun(ix1 - 1, by0 + 1, by1 - 1, track_highlight);
+        paint.vrun(ix1, by0 + 1, by1 - 1, track_highlight_light);
 
-        auto slider_offset = get_slider_offset();
-        if (slider_offset > 0) {
-          ForeColor(yellowColor);
+        // Each track segment (above and below the thumb) is its own recessed
+        // well with a 2px dark top bevel. Draw it at the channel top and just
+        // below the thumb; whichever is hidden by the thumb is simply overdrawn.
+        auto seg_top = [&](int y0) {
+          int y1 = y0 + 1;
+          if (y0 > by0 && y0 < by1) {
+            paint.hrun(ix0, ix1 - 1, y0, track_shadow_dark);
+            paint.pixel(ix1, y0, track_highlight_light);
+          }
+          if (y1 > by0 && y1 < by1) {
+            paint.pixel(ix0, y1, track_shadow_dark);
+            paint.hrun(ix0 + 1, ix1 - 2, y1, track_shadow);
+            paint.pixel(ix1 - 1, y1, track_highlight);
+            paint.pixel(ix1, y1, track_highlight_light);
+          }
+        };
+        seg_top(by0 + 1);
+        seg_top(thumb_top + th_h + 1);
+
+        // Black frame around the whole bar.
+        paint.hrun(bx0, bx1, by0, black);
+        paint.hrun(bx0, bx1, by1, black);
+        paint.vrun(bx0, by0, by1, black);
+        paint.vrun(bx1, by0, by1, black);
+
+        // Up / down arrow buttons grouped at the bottom (the original's
+        // scroll-arrow placement), each a raised face with a centered triangle.
+        // When pressed the same layout is drawn with the pushed-in palette.
+        auto draw_arrow = [&](int b0, bool down, bool pressed) {
+          const RGBColor& face = pressed ? arrow_face_pressed : arrow_face;
+          const RGBColor& hi = pressed ? arrow_highlight_pressed : arrow_highlight;
+          const RGBColor& sh = pressed ? arrow_shadow_pressed : arrow_shadow;
+          int b1 = b0 + ar_h;
+          paint.hrun(bx0, bx1, b0, black);
+          paint.hrun(bx0, bx1, b1, black);
+          paint.vrun(bx0, b0, b1, black);
+          paint.vrun(bx1, b0, b1, black);
+          paint.box(ix0, b0 + 1, ix1 + 1, b1, face);
+          paint.vrun(ix0, b0 + 1, b1 - 1, hi);
+          paint.vrun(ix1, b0 + 1, b1 - 1, sh);
+          paint.hrun(ix0, ix1 - 1, b0 + 1, hi);
+          paint.pixel(ix1, b0 + 1, face);
+          paint.pixel(ix0, b1 - 1, face);
+          paint.hrun(ix0 + 1, ix1, b1 - 1, sh);
+          const int widths[4] = {2, 4, 6, 8};
+          for (int k = 0; k < 4; k++) {
+            int ry = down ? b0 + 6 + (3 - k) : b0 + 6 + k;
+            int half = widths[k] / 2;
+            paint.hrun(cx - half, cx + half - 1, ry, black);
+          }
+        };
+        draw_arrow(up_top, false, this->pressed_part == kControlUpButtonPart);
+        draw_arrow(dn_top, true, this->pressed_part == kControlDownButtonPart);
+
+        // Thumb: a periwinkle box with an embossed grip. Black border, then 15
+        // interior rows. The thumb travels from the top of the track. While it
+        // is being dragged it uses the darker pressed palette (same structure).
+        const bool thumb_pressed = (this->pressed_part == kControlIndicatorPart);
+        const RGBColor& th_hi = thumb_pressed ? thumb_highlight_pressed : thumb_highlight;
+        const RGBColor& th_lt = thumb_pressed ? thumb_light_pressed : thumb_light;
+        const RGBColor& th_md = thumb_pressed ? thumb_mid_pressed : thumb_mid;
+        const RGBColor& th_sh = thumb_pressed ? thumb_shadow_pressed : thumb_shadow;
+        const RGBColor& th_gr = thumb_pressed ? thumb_grip_pressed : thumb_grip;
+        const int tt = thumb_top;
+        paint.hrun(bx0, bx1, tt, black);
+        paint.hrun(bx0, bx1, tt + th_h, black);
+        paint.vrun(bx0, tt, tt + th_h, black);
+        paint.vrun(bx1, tt, tt + th_h, black);
+        const int n = ix1 - ix0 + 1;
+        for (int ri = 0; ri < th_h - 1; ri++) {
+          int y = tt + 1 + ri;
+          if (ri == 0) {
+            paint.pixel(ix0, y, th_hi);
+            paint.hrun(ix0 + 1, ix1 - 1, y, th_lt);
+            paint.pixel(ix1, y, th_md);
+          } else if (ri == th_h - 2) {
+            paint.pixel(ix0, y, th_md);
+            paint.hrun(ix0 + 1, ix1, y, th_sh);
+          } else {
+            paint.pixel(ix0, y, th_lt);
+            paint.hrun(ix0 + 1, ix1 - 1, y, th_md);
+            paint.pixel(ix1, y, th_sh);
+          }
+          // Embossed grip: alternating bright/light and dark rows in the center.
+          if (n >= 14 && ri >= 3 && ri <= 10) {
+            if (ri % 2 == 1) { // ri 3,5,7,9
+              paint.pixel(ix0 + 3, y, th_hi);
+              paint.hrun(ix0 + 4, ix0 + 9, y, th_lt);
+            } else { // ri 4,6,8,10
+              paint.hrun(ix0 + 4, ix0 + 10, y, th_gr);
+            }
+          }
         }
 
-        Rect slider_rect{
-            .top = static_cast<int16_t>(r.top + w + slider_offset),
-            .left = r.left,
-            .bottom = static_cast<int16_t>(r.top + 2 * w + slider_offset),
-            .right = r.right};
-        port.draw_rect_outline(slider_rect);
-
         RGBForeColor(&prev_color);
-        RGBBackColor(&prev_bg_color);
         break;
       }
       case ResourceFile::DecodedDialogItem::Type::HELP_BALLOON:
@@ -641,9 +793,11 @@ public:
     if (this->control->max > this->control->min) {
       auto value_range = this->control->max - this->control->min;
       value_offset = static_cast<float>(this->control->value - this->control->min) / value_range;
-      // Slider offset is from the top of the slider, so the range is reduced by the top and bottom
-      // scroll buttons PLUS the height of the slider (3 * w)
-      auto slider_range = h - 3 * w;
+      // Slider offset is from the top of the track. The range is what is left after the thumb
+      // (height w) and the two scroll buttons (each height w - 1, grouped at the bottom): the
+      // thumb's lowest top is (rect.bottom - 1) - 2 * (w - 1) - w from the top, which is
+      // h - 3 * w + 1.
+      auto slider_range = h - 3 * w + 1;
       slider_offset = slider_range * value_offset;
     }
     return slider_offset;
@@ -656,17 +810,28 @@ public:
     }
     auto slider_offset = get_slider_offset();
     auto w = get_width();
+    auto h = get_height();
     auto local_point = pt;
     local_point.h -= this->rect.left;
     local_point.v -= this->rect.top;
 
-    if (local_point.v <= w) {
-      return kControlUpButtonPart;
-    } else if (local_point.v >= get_height() - w) {
+    // Both arrows are grouped at the bottom, each of height w - 1: the down
+    // button's top border is at (h - 1) - (w - 1) and the up button's at
+    // (h - 1) - 2 * (w - 1). The thumb (height w) travels from the top of the
+    // track, so its bounds are [slider_offset, slider_offset + w]. These match
+    // the metrics used by the draw code above.
+    auto ar_h = w - 1;
+    auto down_top = h - 1 - ar_h;
+    auto up_top = h - 1 - 2 * ar_h;
+    auto thumb_top = slider_offset;
+    auto thumb_bottom = slider_offset + w;
+    if (local_point.v >= down_top) {
       return kControlDownButtonPart;
-    } else if (local_point.v >= slider_offset && local_point.v <= (slider_offset + w)) {
+    } else if (local_point.v >= up_top) {
+      return kControlUpButtonPart;
+    } else if (local_point.v >= thumb_top && local_point.v <= thumb_bottom) {
       return kControlIndicatorPart;
-    } else if (local_point.v < slider_offset) {
+    } else if (local_point.v < thumb_top) {
       return kControlPageUpPart;
     } else {
       return kControlPageDownPart;
@@ -1843,7 +2008,91 @@ short TrackControl(ControlHandle handle, Point pt, ProcPtr action_proc) {
     return 0;
   }
 
-  return item->track_control_part(pt);
+  int16_t initial_part = item->track_control_part(pt);
+
+  // The caller passes pt in window-local coordinates (it calls GlobalToLocal
+  // before FindControl/TrackControl), and track_control_part / the control rect
+  // are local too. GetMouseGlobal, however, returns global coordinates, so
+  // capture the global-to-local offset from this initial click and convert
+  // every later mouse sample back to local. (Mixing the two added the window
+  // origin and made the thumb jump on grab.)
+  Point g0;
+  GetMouseGlobal(&g0);
+  int16_t off_h = static_cast<int16_t>(g0.h - pt.h);
+  int16_t off_v = static_cast<int16_t>(g0.v - pt.v);
+  auto local_mouse = [&]() -> Point {
+    Point g;
+    GetMouseGlobal(&g);
+    return Point{.v = static_cast<int16_t>(g.v - off_v), .h = static_cast<int16_t>(g.h - off_h)};
+  };
+
+  // For the arrow buttons, track the press the way the Mac Control Manager
+  // does: keep the button drawn pushed in while the mouse is held, release the
+  // highlight if the cursor leaves the button, and return the part only if the
+  // mouse comes up over it. (The caller passes a null action proc and scrolls
+  // one step on the returned part, so this preserves the one-step-per-click
+  // behavior and only adds the visual feedback.) The page regions keep the
+  // existing one-shot behavior.
+  if (initial_part == kControlUpButtonPart || initial_part == kControlDownButtonPart) {
+    int16_t shown = -1;
+    while (Button()) {
+      int16_t want = (item->track_control_part(local_mouse()) == initial_part) ? initial_part : 0;
+      if (want != shown) {
+        item->pressed_part = want;
+        render_window_for_item(item);
+        shown = want;
+      }
+      SDL_Delay(15);
+    }
+    if (item->pressed_part != 0) {
+      item->pressed_part = 0;
+      render_window_for_item(item);
+    }
+    return (item->track_control_part(local_mouse()) == initial_part) ? initial_part : 0;
+  }
+
+  // Thumb (indicator): drag it live. The control value follows the cursor while
+  // the mouse is held, with the thumb drawn pushed in. If the caller supplies an
+  // action proc it is called each time the value changes so the caller can
+  // redraw its contents (for example the shop item list) live during the drag;
+  // otherwise the caller redraws once when the drag returns. (Without this the
+  // value never changed, so dragging the thumb did nothing.)
+  if (initial_part == kControlIndicatorPart) {
+    int slider_range = item->get_height() - 3 * item->get_width() + 1;
+    int value_range = item->control->max - item->control->min;
+    if (slider_range > 0 && value_range > 0) {
+      // A real action proc takes the control and the part being tracked. The
+      // -1 value is the Toolbox sentinel for "use the control's default proc",
+      // which we have nothing to do for, so treat it like none.
+      auto live_proc = reinterpret_cast<void (*)(ControlHandle, short)>(action_proc);
+      bool have_live_proc = (action_proc != nullptr) && (action_proc != reinterpret_cast<ProcPtr>(-1));
+
+      // Start from the current thumb offset and move it by the cursor delta, so
+      // the grab point stays under the cursor with no jump.
+      int start_offset = item->get_slider_offset();
+      item->pressed_part = kControlIndicatorPart;
+      render_window_for_item(item);
+      while (Button()) {
+        Point cur = local_mouse();
+        int off = std::clamp(start_offset + (cur.v - pt.v), 0, slider_range);
+        int new_value = item->control->min + static_cast<int>(static_cast<double>(off) / slider_range * value_range + 0.5);
+        new_value = std::clamp<int>(new_value, item->control->min, item->control->max);
+        if (new_value != item->control->value) {
+          item->control->value = static_cast<int16_t>(new_value);
+          render_window_for_item(item);
+          if (have_live_proc) {
+            live_proc(handle, kControlIndicatorPart);
+          }
+        }
+        SDL_Delay(15);
+      }
+      item->pressed_part = 0;
+      render_window_for_item(item);
+    }
+    return kControlIndicatorPart;
+  }
+
+  return initial_part;
 }
 
 short GetControlValue(ControlHandle handle) {
