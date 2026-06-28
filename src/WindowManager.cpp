@@ -9,6 +9,7 @@
 
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_properties.h>
+#include <algorithm>
 #include <cmath>
 #include <memory>
 #include <stdexcept>
@@ -54,6 +55,99 @@ inline Handle wrap_opaque_handle(size_t h) {
 
 inline Rect copy_rect(const ResourceDASM::Rect& src) {
   return Rect{.top = src.y1.load(), .left = src.x1.load(), .bottom = src.y2.load(), .right = src.x2.load()};
+}
+
+static void draw_horizontal_line_clipped(CCGrafPort& port, int32_t left, int32_t right, int32_t y, uint32_t color) {
+  int32_t height = static_cast<int32_t>(port.data.get_height());
+  int32_t width = static_cast<int32_t>(port.data.get_width());
+  if (y < 0 || y >= height) {
+    return;
+  }
+  left = std::max<int32_t>(left, 0);
+  right = std::min<int32_t>(right, width - 1);
+  if (left <= right) {
+    port.data.draw_horizontal_line(left, right, y, 0, color);
+  }
+}
+
+static void draw_vertical_line_clipped(CCGrafPort& port, int32_t x, int32_t top, int32_t bottom, uint32_t color) {
+  int32_t height = static_cast<int32_t>(port.data.get_height());
+  int32_t width = static_cast<int32_t>(port.data.get_width());
+  if (x < 0 || x >= width) {
+    return;
+  }
+  top = std::max<int32_t>(top, 0);
+  bottom = std::min<int32_t>(bottom, height - 1);
+  if (top <= bottom) {
+    port.data.draw_vertical_line(x, top, bottom, 0, color);
+  }
+}
+
+static void draw_dbox_frame_line(
+    CCGrafPort& port,
+    const Rect& content_rect,
+    int16_t offset,
+    uint32_t top_left_color,
+    uint32_t bottom_right_color) {
+  int32_t left = content_rect.left - offset;
+  int32_t top = content_rect.top - offset;
+  int32_t right = content_rect.right + offset - 1;
+  int32_t bottom = content_rect.bottom + offset - 1;
+
+  draw_horizontal_line_clipped(port, left, right, top, top_left_color);
+  draw_vertical_line_clipped(port, left, top, bottom, top_left_color);
+  draw_horizontal_line_clipped(port, left, right, bottom, bottom_right_color);
+  draw_vertical_line_clipped(port, right, top, bottom, bottom_right_color);
+}
+
+static void draw_dbox_frame(CCGrafPort& port, const Rect& content_rect) {
+  constexpr int16_t frame_offset = 6;
+  constexpr int16_t edge_offset = frame_offset - 1;
+  constexpr int16_t shadow_trim = 2;
+
+  // Draw Classic Mac dBoxProc chrome outside the dialog content rect.
+  draw_dbox_frame_line(port, content_rect, frame_offset, 0x000000FF, 0x000000FF);
+  draw_horizontal_line_clipped(
+      port,
+      content_rect.left - edge_offset,
+      content_rect.right + edge_offset - 1,
+      content_rect.top - edge_offset,
+      0xBBBBBBFF);
+  draw_vertical_line_clipped(
+      port,
+      content_rect.left - edge_offset,
+      content_rect.top - edge_offset,
+      content_rect.bottom + edge_offset - 1,
+      0xBBBBBBFF);
+  draw_horizontal_line_clipped(
+      port,
+      content_rect.left - frame_offset + shadow_trim,
+      content_rect.right + edge_offset - 1,
+      content_rect.bottom + edge_offset - 1,
+      0x555555FF);
+  draw_vertical_line_clipped(
+      port,
+      content_rect.right + edge_offset - 1,
+      content_rect.top - frame_offset + shadow_trim,
+      content_rect.bottom + edge_offset - 1,
+      0x555555FF);
+  draw_dbox_frame_line(port, content_rect, 4, 0xFFFFFFFF, 0x999999FF);
+  draw_dbox_frame_line(port, content_rect, 3, 0x777777FF, 0x777777FF);
+  draw_dbox_frame_line(port, content_rect, 2, 0x777777FF, 0x777777FF);
+  draw_dbox_frame_line(port, content_rect, 1, 0x777777FF, 0x777777FF);
+
+  draw_horizontal_line_clipped(
+      port,
+      content_rect.left - frame_offset + shadow_trim,
+      content_rect.right + frame_offset,
+      content_rect.bottom + frame_offset,
+      0x000000FF);
+  draw_vertical_line_clipped(
+      port,
+      content_rect.right + frame_offset,
+      content_rect.top - frame_offset + shadow_trim,
+      content_rect.bottom + frame_offset,
+      0x000000FF);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -926,12 +1020,12 @@ Window::Window(
       focused_item{nullptr} {
   port.rgbBgColor = background_color;
 
-  // All windows created by Realmz should be borderless, except the first one
-  bool is_borderless = ((this->window_kind == dBoxProc) ||
+  // Warn if a resource asks for Toolbox chrome that this port does not model.
+  bool is_supported_proc_id = ((this->window_kind == dBoxProc) ||
       (this->window_kind == plainDBox) ||
       (this->window_kind == altDBoxProc));
-  if (!is_borderless) {
-    phosg::fwrite_fmt(stderr, "Warning: Creating non-borderless window\n");
+  if (!is_supported_proc_id) {
+    phosg::fwrite_fmt(stderr, "Warning: Creating unsupported window kind {}\n", this->window_kind);
   }
 
   for (auto di : this->dialog_items) {
@@ -1354,11 +1448,15 @@ void WindowManager::recomposite(std::shared_ptr<Window> updated_window) {
   }
 
   for (; window; window = window->window_above) {
-    // Draw window border
-    this->screen_port.data.draw_horizontal_line(window->port.portRect.left - 1, window->port.portRect.right, window->port.portRect.top - 1, 0, 0x000000FF);
-    this->screen_port.data.draw_horizontal_line(window->port.portRect.left - 1, window->port.portRect.right, window->port.portRect.bottom, 0, 0x000000FF);
-    this->screen_port.data.draw_vertical_line(window->port.portRect.left - 1, window->port.portRect.top, window->port.portRect.bottom, 0, 0x000000FF);
-    this->screen_port.data.draw_vertical_line(window->port.portRect.right, window->port.portRect.top, window->port.portRect.bottom, 0, 0x000000FF);
+    if (window->is_dialog_flag && window->window_kind == dBoxProc) {
+      draw_dbox_frame(this->screen_port, window->port.portRect);
+    } else {
+      // Draw window border
+      this->screen_port.data.draw_horizontal_line(window->port.portRect.left - 1, window->port.portRect.right, window->port.portRect.top - 1, 0, 0x000000FF);
+      this->screen_port.data.draw_horizontal_line(window->port.portRect.left - 1, window->port.portRect.right, window->port.portRect.bottom, 0, 0x000000FF);
+      this->screen_port.data.draw_vertical_line(window->port.portRect.left - 1, window->port.portRect.top, window->port.portRect.bottom, 0, 0x000000FF);
+      this->screen_port.data.draw_vertical_line(window->port.portRect.right, window->port.portRect.top, window->port.portRect.bottom, 0, 0x000000FF);
+    }
 
     if (enable_translucent_window_debug) {
       this->screen_port.data.copy_from_with_custom(
@@ -1767,7 +1865,8 @@ WindowPtr WindowManager_CreateNewWindow(int16_t res_id, bool is_dialog, WindowPt
     ref_con = wind.ref_con;
   }
 
-  // If there's a corresponding dctb or wctb, use it to initialize the port's background color. It seems none of the other fields are relevant: they're used for drawing the window frame, but Realmz only uses borderless windows.
+  // If there's a corresponding dctb or wctb, use it to initialize the port's background color.
+  // The other color-table fields describe Toolbox frame chrome; WindowManager draws that separately.
   RGBColor background_color = {0xFFFF, 0xFFFF, 0xFFFF};
   try {
     auto clut_data = GetResource(is_dialog ? ResourceDASM::RESOURCE_TYPE_dctb : ResourceDASM::RESOURCE_TYPE_wctb, res_id);
