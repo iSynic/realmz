@@ -403,9 +403,15 @@ static ResourceManager rm;
 // Classic Mac OS API implementation
 
 std::string host_resource_filename_for_host_filename(const std::string& host_path, bool allow_missing = false) {
-  std::string full_path = host_path + ".rsrc";
-  if (allow_missing || std::filesystem::is_regular_file(full_path)) {
-    return full_path;
+  if (allow_missing) {
+    return host_path + ".rsrc";
+  }
+
+  for (const auto* extension : {".rsrc", ".rsf"}) {
+    std::string full_path = host_path + extension;
+    if (std::filesystem::is_regular_file(full_path)) {
+      return full_path;
+    }
   }
 
   return "";
