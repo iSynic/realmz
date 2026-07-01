@@ -19,6 +19,7 @@
 #include "stdio.h"
 // #include "RDriver.h"
 // #include "MAD.h"
+#include "Diagnostics.h"
 #include "prototypes.h"
 #include "structs.h"
 #include "variables.h"
@@ -161,6 +162,12 @@ int32_t myrmagic_collidecheck = MYRMAGIC;
 Boolean usequickshow, collideflag;
 short usecustomnames = FALSE;
 char lastdeltax, lastdeltay;
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * Track debug-only map noclip state.
+ */
+#ifdef REALMZ_DEBUG
+Boolean debugmapnoclip = FALSE;
+#endif
 PixPatHandle gHilite, gNeutral, gShadow, base, light, dark, whitepat;
 Boolean notes[3000] = {0};
 int32_t myrmagic_notes = MYRMAGIC;
@@ -1248,7 +1255,16 @@ void MainLoop(void) {
 
 /******************************** main  ************************/
 int main(int argc, char* argvp[]) {
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Install diagnostics before Realmz initializes and register the debug menu.
+   */
+  RealmzDiagnostics_Init(argc, argvp);
+  RealmzDiagnostics_LogEvent("main:start");
   ToolBoxInit();
+#ifdef REALMZ_DEBUG
+  RealmzDebugSetMenuHandler(RealmzDebugOpenTestMenu);
+#endif
+  RealmzDiagnostics_LogEvent("main:toolbox-ready");
 
   SetPortDialogPort(background);
   SetSoundVol(volume);

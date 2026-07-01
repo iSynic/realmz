@@ -353,3 +353,8 @@ FILE* MyrFopen(char* nomMac, char* type);
 void MyrCheckMemory(short mode);
 void MyrDump(char* format, ...);
 void MyrInitCheckMemory(void);
+
+#ifdef REALMZ_DEBUG
+void RealmzDebugOpenTestMenu(void);
+void RealmzDebugSetMenuHandler(void (*handler)(void));
+#endif

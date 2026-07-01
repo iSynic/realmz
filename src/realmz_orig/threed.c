@@ -1,6 +1,15 @@
 #include "prototypes.h"
 #include "variables.h"
 
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * Let debug builds bypass dungeon wall blockers.
+ */
+#ifdef REALMZ_DEBUG
+#define REALMZ_DEBUG_MAP_NOCLIP debugmapnoclip
+#else
+#define REALMZ_DEBUG_MAP_NOCLIP FALSE
+#endif
+
 /************************** threed *********************/
 void threed(int32_t id, short gox, short goy, short dir) {
   int32_t checktime;
@@ -513,7 +522,7 @@ move:
               return;
           }
           wall = field[floory + deltay][floorx + deltax];
-          if ((wall) && (!MyrBitTstShort((void*)(&wall), 14)) && (!MyrBitTstShort((void*)(&wall), 13))) {
+          if ((!REALMZ_DEBUG_MAP_NOCLIP) && (wall) && (!MyrBitTstShort((void*)(&wall), 14)) && (!MyrBitTstShort((void*)(&wall), 13))) {
 
             if ((MyrBitTstShort((void*)(&wall), 8 - head)) && (forward)) /**** looking for secret area can pass****/
             {

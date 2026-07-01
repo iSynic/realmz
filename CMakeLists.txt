@@ -48,6 +48,26 @@ find_package(resource_file REQUIRED)
 message(STATUS "CMake found resource_file at: ${resource_file_DIR}")
 find_package(ZLIB REQUIRED)
 message(STATUS "CMake found zlib at: ${zlib_DIR}")
+find_package(Git QUIET)
+
+set(REALMZ_GIT_COMMIT "unknown")
+set(REALMZ_GIT_BRANCH "unknown")
+if(Git_FOUND)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE REALMZ_GIT_COMMIT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse --abbrev-ref HEAD
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE REALMZ_GIT_BRANCH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+endif()
 
 # For cross-compilation to Windows
 if(WIN32)
@@ -231,6 +251,7 @@ set(SOURCES
     src/SDLHelpers.cpp
     src/SoundManager.cpp
     src/WindowManager.cpp
+    src/Diagnostics.cpp
 )
 
 set(realmz_lib_LINK_LIBRARIES
@@ -253,6 +274,7 @@ elseif(WIN32)
     list(APPEND SOURCES src/windows/MenuController.cpp src/windows/WinMenuController.cpp)
     list(APPEND realmz_lib_LINK_LIBRARIES
         bcrypt # Used by phosg::phosg during compilation for windows targets
+        dbghelp # Used by diagnostics minidump writing
     )
 endif()
 
@@ -302,6 +324,10 @@ set_source_files_properties(${DATA_RESOURCE_FILES} PROPERTIES
 # be shared as if they were a library to enable test executables
 add_library(realmz_lib STATIC ${SOURCES})
 target_compile_definitions(realmz_lib PUBLIC REALMZ_COCOA=1)
+target_compile_definitions(realmz_lib PUBLIC
+    REALMZ_GIT_COMMIT="${REALMZ_GIT_COMMIT}"
+    REALMZ_GIT_BRANCH="${REALMZ_GIT_BRANCH}"
+)
 if(${CMAKE_BUILD_TYPE} STREQUAL "Debug" OR ${CMAKE_BUILD_TYPE} STREQUAL RelWithDebInfo)
     message("-- REALMZ_DEBUG is enabled because CMAKE_BUILD_TYPE is \"${CMAKE_BUILD_TYPE}\"")
     target_compile_definitions(realmz_lib PUBLIC REALMZ_DEBUG=1)
