@@ -121,18 +121,20 @@ static uint32_t BgraForRgba(uint32_t rgba) {
       static_cast<uint32_t>(b));
 }
 
-static HBITMAP CreateBitmapForMenuIcon(int16_t icon_id) {
+static HBITMAP CreateBitmapForMenuIcon(int16_t icon_id, bool marked) {
   if (icon_id <= 0) {
     return NULL;
   }
 
   try {
     auto image = DecodeCIconImage(icon_id);
-    auto width = image.get_width();
+    constexpr size_t kMarkGutterWidth = 12;
+    auto icon_width = image.get_width();
     auto height = image.get_height();
-    if (!width || !height) {
+    if (!icon_width || !height) {
       return NULL;
     }
+    auto width = icon_width + kMarkGutterWidth;
 
     BITMAPINFO bitmap_info = BITMAPINFO{
         .bmiHeader = {
@@ -154,9 +156,25 @@ static HBITMAP CreateBitmapForMenuIcon(int16_t icon_id) {
 
     auto* dst = static_cast<uint32_t*>(pixels);
     const uint32_t* src = image.get_data();
+    uint32_t transparent = BgraForRgba(0x00000000);
     for (size_t y = 0; y < height; y++) {
-      for (size_t x = 0; x < width; x++) {
-        dst[(y * width) + x] = BgraForRgba(src[(y * width) + x]);
+      for (size_t x = 0; x < kMarkGutterWidth; x++) {
+        dst[(y * width) + x] = transparent;
+      }
+      for (size_t x = 0; x < icon_width; x++) {
+        dst[(y * width) + kMarkGutterWidth + x] = BgraForRgba(src[(y * icon_width) + x]);
+      }
+    }
+
+    if (marked && height >= 9) {
+      constexpr size_t kDiamondCenterX = 5;
+      size_t center_y = height / 2;
+      for (size_t y = center_y - 3; y <= center_y + 3; y++) {
+        size_t distance = (y > center_y) ? (y - center_y) : (center_y - y);
+        size_t half_width = 3 - distance;
+        for (size_t x = kDiamondCenterX - half_width; x <= kDiamondCenterX + half_width; x++) {
+          dst[(y * width) + x] = BgraForRgba(0x000000FF);
+        }
       }
     }
 
@@ -349,26 +367,23 @@ int WinCreatePopupMenu(SDL_Window* sdl_window, std::shared_ptr<WinMenu> menu, in
   for (const auto& item : menu->items) {
     i++;
     bool marked = IsPopupMenuItemMarked(item);
-    HBITMAP item_bitmap = CreateBitmapForMenuIcon(item.icon_id);
+    HBITMAP item_bitmap = CreateBitmapForMenuIcon(item.icon_id, marked);
     if (item_bitmap) {
       owned_bitmaps.emplace_back(item_bitmap);
     }
 
-    UINT enabled_state = item.enabled ? MFS_ENABLED : MFS_GRAYED;
-    MENUITEMINFO item_info = MENUITEMINFO{
-        .cbSize = sizeof(MENUITEMINFO),
-        .fMask = MIIM_FTYPE | MIIM_ID | MIIM_STATE | MIIM_STRING,
-        .fType = MFT_STRING,
-        .fState = enabled_state | (marked ? MFS_CHECKED : MFS_UNCHECKED),
-        .wID = static_cast<UINT>(i),
-        .dwTypeData = const_cast<char*>(item.name.c_str()),
-        .cch = static_cast<UINT>(item.name.length())};
-    if (item_bitmap) {
-      item_info.fMask |= MIIM_BITMAP;
-      item_info.hbmpItem = item_bitmap;
-    }
+    UINT flags = MF_STRING |
+        (item.enabled ? MF_ENABLED : MF_GRAYED) |
+        (marked ? MF_CHECKED : MF_UNCHECKED);
+    AppendMenu(popupMenu, flags, static_cast<UINT_PTR>(i), item.name.c_str());
 
-    InsertMenuItem(popupMenu, i - 1, TRUE, &item_info);
+    if (item_bitmap) {
+      MENUITEMINFO item_info = MENUITEMINFO{
+          .cbSize = sizeof(MENUITEMINFO),
+          .fMask = MIIM_BITMAP,
+          .hbmpItem = item_bitmap};
+      SetMenuItemInfo(popupMenu, static_cast<UINT>(i), FALSE, &item_info);
+    }
   }
 
   // TrackPopupMenu displays the menu in screen coordinates. The caller hands us the requested
