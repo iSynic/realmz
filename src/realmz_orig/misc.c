@@ -1,6 +1,7 @@
 #include "prototypes.h"
 #include "realmzbuild.h"
 #include "variables.h"
+#include "Diagnostics.h"
 
 /****************************** doreg5 **********************************/
 short doreg5(void) {
@@ -1264,6 +1265,11 @@ void adddelscen(short mode) {
   DialogRef namewindow;
   Str255 teststring;
 
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Record scenario add/remove context for crash diagnostics.
+   */
+  RealmzDiagnostics_LogEvent(mode ? "scenario-menu:add:start" : "scenario-menu:remove:start");
+
   if (mode)
     MyrParamText((Ptr) "Enter the name of the scenario you wish to install and click OK.", (Ptr) "", (Ptr) "", (Ptr) "");
   else
@@ -1327,6 +1333,8 @@ void adddelscen(short mode) {
               GetDialogItemText(itemHandle, myString);
               strcpy(filename, myString);
               PtoCstr((StringPtr)filename);
+              RealmzDiagnostics_SetContext("scenario-add-name", filename);
+              RealmzDiagnostics_LogEvent("scenario-menu:add:selectscenario");
               if (selectscenario(filename, 0)) {
                 GetDialogItemText(itemHandle, myString);
                 SetIndString(myString, -6003 - divine, t);
@@ -1352,6 +1360,7 @@ void adddelscen(short mode) {
             PtoCstr(teststring);
 
             if (!strcmp(myString, teststring)) {
+              RealmzDiagnostics_SetContext("scenario-remove-name", (char*)teststring);
               SetIndString((StringPtr) "", -6003 - divine, t);
               flashmessage((StringPtr) "Scenario has been removed, Note: It will still appear in the menu until the next time you play.", 135, 132, 0, 6000);
               goto out;
@@ -2357,6 +2366,13 @@ short selectscenario(char tempfilename[256], short mode) {
   short t;
   char filename[256];
   char returnname[256];
+  char diagnostic_value[64];
+
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Record scenario selection paths for crash diagnostics.
+   */
+  RealmzDiagnostics_SetContext("selectscenario-input", tempfilename);
+  RealmzDiagnostics_LogEvent(mode ? "selectscenario:load:start" : "selectscenario:probe:start");
 
   if ((!doreg()) && (!seenit)) {
     if (FrontWindow() == GetDialogWindow(background)) {
@@ -2383,18 +2399,29 @@ short selectscenario(char tempfilename[256], short mode) {
   strcat((StringPtr)filename, ":");
   strcat(returnname, (StringPtr) ":Scenario");
   strcat((StringPtr)filename, tempfilename);
+  RealmzDiagnostics_SetContext("selectscenario-data-file", filename);
+  RealmzDiagnostics_SetContext("selectscenario-resource-file", returnname);
 
+  RealmzDiagnostics_LogEvent("selectscenario:data-open:try");
   if ((fp = MyrFopen(filename, "rb")) != NULL) {
+    RealmzDiagnostics_LogEvent("selectscenario:data-open:ok");
     fclose(fp);
     if (refnum > 0) {
+      RealmzDiagnostics_LogEvent("selectscenario:close-old-resource");
       CloseResFile(refnum);
       refnum = -1;
     }
     CtoPstr(returnname);
 
+    RealmzDiagnostics_LogEvent("selectscenario:resource-open:try");
     refnum = MyrOpenResFile((Ptr)returnname);
+    sprintf(diagnostic_value, "%d", refnum);
+    RealmzDiagnostics_SetContext("selectscenario-refnum", diagnostic_value);
 
+    RealmzDiagnostics_LogEvent("selectscenario:count-rlmz:try");
     t = CountResources('RLMZ') - 1;
+    sprintf(diagnostic_value, "%d", t);
+    RealmzDiagnostics_SetContext("selectscenario-rlmz-count", diagnostic_value);
 
 #if divine
     if ((t > 1) && (mode)) {
@@ -2430,14 +2457,19 @@ short selectscenario(char tempfilename[256], short mode) {
 
     strcpy(filename, scenarioname); /************ load in custom solid data ***********/
     strcat((StringPtr)filename, "Data Solids");
+    RealmzDiagnostics_SetContext("selectscenario-solids-file", filename);
+    RealmzDiagnostics_LogEvent("selectscenario:solids-open:try");
 
     if ((fp = MyrFopen(filename, "rb")) == NULL) {
+      RealmzDiagnostics_LogEvent("selectscenario:solids-create");
       fp = MyrFopen(filename, "w+b");
       for (t = 0; t < 1024; t++)
         solids[t] = 0;
       fwrite(&solids, sizeof solids, 1, fp);
-    } else
+    } else {
+      RealmzDiagnostics_LogEvent("selectscenario:solids-read");
       fread(&solids, sizeof solids, 1, fp);
+    }
     fclose(fp);
 
     if (customspellresnum > 0) //  Fantasoft v7.1 Begin
@@ -2448,23 +2480,610 @@ short selectscenario(char tempfilename[256], short mode) {
 
     strcpy(filename, scenarioname); /************ load in custom spells data ***********/
     strcat((StringPtr)filename, "Data Spell");
+    RealmzDiagnostics_SetContext("selectscenario-spell-file", filename);
+    RealmzDiagnostics_LogEvent("selectscenario:spell-open:try");
 
     if ((fp = MyrFopen(filename, "rb")) != NULL) {
+      RealmzDiagnostics_LogEvent("selectscenario:spell-read");
       fread(&spelldata[4], sizeof spellinfo * 105, 1, fp);
       CvtTabSpellToPc(&spelldata[4], 105);
       fclose(fp);
       CtoPstr(filename);
+      RealmzDiagnostics_LogEvent("selectscenario:spell-resource-open:try");
       customspellresnum = MyrOpenResFile((StringPtr)filename);
     }
 
+    RealmzDiagnostics_LogEvent("selectscenario:ok");
     return (TRUE);
   } else {
+    RealmzDiagnostics_LogEvent("selectscenario:data-open:missing");
     if (mode)
       warn(61);
     return (FALSE);
   }
   return (TRUE);
 }
+
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * Add debug-only gameplay controls for diagnostic builds.
+ */
+#ifdef REALMZ_DEBUG
+static void realmz_debug_mark(const char* event_name) {
+  RealmzDiagnostics_LogEvent(event_name);
+}
+
+static Boolean realmz_debug_read_number(const char* prompt, int32_t* value) {
+  flashmessage((StringPtr)prompt, 20, 40, -1, 6000);
+  getword();
+  if (!strlen(gotword)) {
+    flashmessage((StringPtr) "", 20, 40, -1, 0);
+    return FALSE;
+  }
+  StringToNum((StringPtr)gotword, value);
+  flashmessage((StringPtr) "", 20, 40, -1, 0);
+  return TRUE;
+}
+
+static Boolean realmz_debug_block_if_combat(const char* action_name) {
+  char message[128];
+
+  if (!incombat)
+    return FALSE;
+
+  sprintf(message, "debug-menu:%s:ignored:combat", action_name);
+  realmz_debug_mark(message);
+  flashmessage((StringPtr) "Debug: this action is disabled during combat.", 30, 100, 75, 0);
+  return TRUE;
+}
+
+static void realmz_debug_refresh_map(void) {
+  centerpict();
+  updatecontrols();
+  in();
+}
+
+static void realmz_debug_clear_harmful_conditions(short who, short* cleared) {
+  static const short harmful_conditions[] = {
+      COND_RUNS_AWAY,
+      COND_HELPLESS,
+      COND_TANGLED,
+      COND_CURSED,
+      COND_STUPID,
+      COND_SLOW,
+      COND_POISONED,
+      COND_ANIMATED,
+      COND_TURNED_TO_STONE,
+      COND_BLIND,
+      COND_DISEASED,
+      COND_CONFUSED,
+      COND_ENERGY_DRAIN,
+      COND_HINDERED_ATTACKS,
+      COND_HINDERED_DEFENSE,
+      COND_SILENCED,
+  };
+  short t;
+
+  for (t = 0; t < (short)(sizeof harmful_conditions / sizeof harmful_conditions[0]); t++) {
+    if (c[who].condition[harmful_conditions[t]]) {
+      c[who].condition[harmful_conditions[t]] = 0;
+      (*cleared)++;
+    }
+  }
+}
+
+static void realmz_debug_restore_party(void) {
+  short restored = 0;
+  short cleared = 0;
+  short who;
+
+  for (who = 0; who <= charnum && who < 6; who++) {
+    if (c[who].staminamax > 0) {
+      c[who].stamina = c[who].staminamax;
+      c[who].bleeding = FALSE;
+      restored = TRUE;
+    }
+    if (c[who].spellpointsmax > 0) {
+      c[who].spellpoints = c[who].spellpointsmax;
+      restored = TRUE;
+    }
+    realmz_debug_clear_harmful_conditions(who, &cleared);
+  }
+
+  if (!restored && !cleared) {
+    realmz_debug_mark("debug-menu:restore-party:ignored:no-active-party");
+    flashmessage((StringPtr) "Debug: no active party.", 30, 100, 60, 0);
+    return;
+  }
+
+  realmz_debug_mark("debug-menu:restore-party");
+  updatemain(FALSE, -1);
+  updatecontrols();
+  flashmessage((StringPtr) "Debug: party restored and harmful conditions cleared.", 30, 100, 60, 0);
+}
+
+static void realmz_debug_win_battle(void) {
+  short defeated = 0;
+  short who;
+
+  if (!incombat) {
+    realmz_debug_mark("debug-menu:win-battle:ignored:not-in-battle");
+    flashmessage((StringPtr) "Debug: not in battle.", 30, 100, 0, 6000);
+    return;
+  }
+
+  for (who = 0; who < nummon; who++) {
+    if ((monster[who].traiter) && (monster[who].stamina > 0)) {
+      monster[who].stamina = 0;
+      monster[who].movement = 0;
+      monster[who].target = -1;
+      defeated++;
+    }
+  }
+
+  killmon = numenemy;
+  realmz_debug_mark("debug-menu:win-battle");
+
+  if (defeated) {
+    flashmessage((StringPtr) "Debug: battle won.", 30, 100, 60, 0);
+  }
+}
+
+static void realmz_debug_toggle_map_noclip(void) {
+  debugmapnoclip = !debugmapnoclip;
+  if (debugmapnoclip) {
+    realmz_debug_mark("debug-menu:map-noclip:on");
+    flashmessage((StringPtr) "Debug: map noclip enabled.", 30, 100, 60, 0);
+  } else {
+    realmz_debug_mark("debug-menu:map-noclip:off");
+    flashmessage((StringPtr) "Debug: map noclip disabled.", 30, 100, 60, 0);
+  }
+}
+
+static void realmz_debug_return_to_scenario_start(void) {
+  FILE* fp;
+
+  if (realmz_debug_block_if_combat("return-start"))
+    return;
+
+  if (indung)
+    saveland(dunglevel);
+  else
+    saveland(landlevel);
+
+  indung = partyx = partyy = landlevel = 0;
+  cancamp = 0;
+  spellcasting = 0;
+  monstercasting = 0;
+  spellcharging = 0;
+
+  GetMenuItemText(gGame, currentscenario, myString);
+  PtoCstr(myString);
+  getfilename((Ptr)myString);
+  fp = MyrFopen(filename, "rb");
+  if (!fp) {
+    realmz_debug_mark("debug-menu:return-start:missing-scenario");
+    scratch(300);
+    return;
+  }
+
+  fread(&reclevel, sizeof(int32_t), 1, fp);
+  CvtLongToPc(&reclevel);
+  fread(&maxlevel, sizeof(int32_t), 1, fp);
+  CvtLongToPc(&maxlevel);
+  fread(&landlevel, sizeof(int32_t), 1, fp);
+  CvtLongToPc(&landlevel);
+  fread(&lookx, sizeof(int32_t), 1, fp);
+  CvtLongToPc(&lookx);
+  fread(&looky, sizeof(int32_t), 1, fp);
+  CvtLongToPc(&looky);
+  fclose(fp);
+
+  x = y = 0;
+  loadland(landlevel, 1);
+  canpriestturn = TRUE;
+  realmz_debug_mark("debug-menu:return-start");
+  realmz_debug_refresh_map();
+}
+
+static void realmz_debug_enable_scenario_actions(void) {
+  cancamp = 0;
+  canpriestturn = TRUE;
+  spellcasting = 0;
+  monstercasting = 0;
+  spellcharging = 0;
+
+  realmz_debug_mark("debug-menu:enable-camp-cast-turn");
+  updatemain(FALSE, -1);
+  updatecontrols();
+  flashmessage((StringPtr) "Debug: camping, spellcasting, and turning enabled.", 30, 100, 75, 0);
+}
+
+static void realmz_debug_teleport_current_map(void) {
+  int32_t new_x;
+  int32_t new_y;
+  char message[128];
+
+  if (realmz_debug_block_if_combat("teleport-current-map"))
+    return;
+
+  if (!realmz_debug_read_number("Debug X coordinate:", &new_x))
+    return;
+  if (!realmz_debug_read_number("Debug Y coordinate:", &new_y))
+    return;
+
+  if ((new_x < 0) || (new_x > 89) || (new_y < 0) || (new_y > 89)) {
+    realmz_debug_mark("debug-menu:teleport-current-map:ignored:bounds");
+    flashmessage((StringPtr) "Debug: coordinates must be from 0 to 89.", 30, 100, 75, 0);
+    return;
+  }
+
+  if (indung) {
+    floorx = new_x;
+    floory = new_y;
+    x = floorx;
+    y = floory;
+    needdungeonupdate = TRUE;
+    updatewalls(floorx - 10, floory - 10);
+  } else {
+    lookx = 0;
+    looky = 0;
+    partyx = new_x;
+    partyy = new_y;
+    x = lookx + partyx;
+    y = looky + partyy;
+  }
+
+  sprintf(message, "debug-menu:teleport-current-map:x=%d:y=%d", new_x, new_y);
+  realmz_debug_mark(message);
+  realmz_debug_refresh_map();
+}
+
+static void realmz_debug_give_item(void) {
+  int32_t item_id;
+  short t;
+  char message[128];
+
+  if (realmz_debug_block_if_combat("give-item"))
+    return;
+
+  if (!realmz_debug_read_number("Debug item ID:", &item_id))
+    return;
+
+  for (t = 0; t < 20; t++)
+    treasure.itemid[t] = 0;
+  treasure.itemid[0] = item_id;
+
+  sprintf(message, "debug-menu:give-item:id=%d", item_id);
+  realmz_debug_mark(message);
+  booty(1);
+  updatemain(FALSE, -1);
+  SetMenuBar(myMenuBar);
+  InsertMenu(gSound, -1);
+  InsertMenu(gSpeed, -1);
+  DrawMenuBar();
+}
+
+static void realmz_debug_set_quest(void) {
+  int32_t quest_id;
+  int32_t quest_value;
+  char message[128];
+
+  if (!realmz_debug_read_number("Debug quest ID:", &quest_id))
+    return;
+  if (!realmz_debug_read_number("Debug quest value:", &quest_value))
+    return;
+
+  if ((quest_id < 0) || (quest_id > 127)) {
+    realmz_debug_mark("debug-menu:set-quest:ignored:bounds");
+    flashmessage((StringPtr) "Debug: quest ID must be from 0 to 127.", 30, 100, 75, 0);
+    return;
+  }
+
+  if (quest_id == 127)
+    quest_value = 0;
+
+  quest[quest_id] = quest_value;
+  sprintf(message, "debug-menu:set-quest:id=%d:value=%d", quest_id, quest_value);
+  realmz_debug_mark(message);
+  realmz_debug_refresh_map();
+}
+
+static void realmz_debug_trigger_encounter(short mode) {
+  int32_t encounter_id;
+  char message[128];
+
+  if (realmz_debug_block_if_combat(mode == 2 ? "trigger-simple" : "trigger-complex"))
+    return;
+
+  if (!realmz_debug_read_number(mode == 2 ? "Debug simple encounter ID:" : "Debug complex encounter ID:", &encounter_id))
+    return;
+
+  sprintf(message, "debug-menu:trigger-%s:id=%d", mode == 2 ? "simple" : "complex", encounter_id);
+  realmz_debug_mark(message);
+  newland(0L, 0L, mode, encounter_id, 0);
+  realmz_debug_refresh_map();
+}
+
+static short realmz_debug_map_record_count(const char* path, long record_size) {
+  FILE* fp;
+  long file_size;
+  long record_count;
+
+  fp = MyrFopen((char*)path, "rb");
+  if (!fp)
+    return 0;
+  if ((fseek(fp, 0, SEEK_END) != 0) || ((file_size = ftell(fp)) < 0)) {
+    fclose(fp);
+    return 0;
+  }
+  fclose(fp);
+
+  if ((record_size <= 0) || ((file_size % record_size) != 0))
+    return 0;
+
+  record_count = file_size / record_size;
+  if (record_count > 21)
+    record_count = 21;
+  if (record_count < 0)
+    record_count = 0;
+  return (short)record_count;
+}
+
+static short realmz_debug_pick_number(const char* title, const char* label, short min_value, short max_value, short current_value) {
+  MenuHandle menu;
+  short itemHit;
+  short value;
+  short item_index;
+  char text[80];
+
+  if (max_value < min_value)
+    return -1;
+
+  menu = GetMenu(131);
+  if (!menu)
+    return -1;
+
+  InsertMenu(menu, -1);
+  MyrAppendMenu(menu, (Ptr)title);
+  DisableItem(menu, 1);
+
+  item_index = 2;
+  for (value = min_value; value <= max_value; value++) {
+    sprintf(text, "%s %d", label, value);
+    MyrAppendMenu(menu, (Ptr)text);
+    if (value == current_value)
+      SetItemMark(menu, item_index, 19);
+    item_index++;
+  }
+  MyrAppendMenu(menu, (Ptr) "Cancel");
+
+  itemHit = PopUpMenuSelect(menu, 50, 400, 0);
+  DeleteMenu(131);
+  ReleaseResource((Handle)menu);
+
+  if ((itemHit < 2) || (itemHit >= item_index))
+    return -1;
+  return (short)(min_value + itemHit - 2);
+}
+
+static short realmz_debug_pick_map_set(void) {
+  MenuHandle menu;
+  short itemHit;
+
+  menu = GetMenu(131);
+  if (!menu)
+    return -1;
+
+  InsertMenu(menu, -1);
+  MyrAppendMenu(menu, (Ptr) "Warp map set");
+  DisableItem(menu, 1);
+  MyrAppendMenu(menu, (Ptr) "Outdoor maps");
+  MyrAppendMenu(menu, (Ptr) "Dungeon maps");
+  MyrAppendMenu(menu, (Ptr) "Cancel");
+
+  itemHit = PopUpMenuSelect(menu, 50, 400, 0);
+  DeleteMenu(131);
+  ReleaseResource((Handle)menu);
+
+  if (itemHit == 2)
+    return 0;
+  if (itemHit == 3)
+    return 1;
+  return -1;
+}
+
+static void realmz_debug_apply_outdoor_warp(short map_id) {
+  char message[128];
+
+  if (indung) {
+    realmz_debug_mark("debug-menu:warp:outdoor:ignored:in-dungeon");
+    flashmessage((StringPtr) "Debug: leave the dungeon before warping to outdoor maps.", 30, 100, 90, 0);
+    return;
+  }
+
+  indung = FALSE;
+  landlevel = map_id;
+  lookx = 37;
+  looky = 38;
+  partyx = 8;
+  partyy = 6;
+  x = lookx;
+  y = looky;
+
+  loadland(landlevel, 1);
+  centerpict();
+  updatecontrols();
+
+  sprintf(message, "debug-menu:warp:outdoor:map=%d:look=%d", map_id, randlevel.landlook);
+  realmz_debug_mark(message);
+  sprintf(message, "Debug: outdoor map %d.", map_id);
+  flashmessage((StringPtr)message, 30, 100, 75, 0);
+}
+
+static void realmz_debug_apply_dungeon_warp(short map_id) {
+  char message[128];
+
+  dunglevel = map_id;
+
+  if (!indung) {
+    realmz_debug_mark("debug-menu:warp:dungeon:enter");
+    threed(dunglevel, 45, 45, 1);
+    return;
+  }
+
+  floorx = 45;
+  floory = 45;
+  x = floorx;
+  y = floory;
+  head = 1;
+
+  loadland(dunglevel, 1);
+  needdungeonupdate = TRUE;
+  updatewalls(floorx - 10, floory - 10);
+  updatecontrols();
+
+  sprintf(message, "debug-menu:warp:dungeon:map=%d:look=%d", map_id, randlevel.landlook);
+  realmz_debug_mark(message);
+  sprintf(message, "Debug: dungeon map %d.", map_id);
+  flashmessage((StringPtr)message, 30, 100, 75, 0);
+}
+
+static void realmz_debug_warp_map(void) {
+  short map_set;
+  short record_count;
+  short map_id;
+  long outdoor_record_size;
+  long dungeon_record_size;
+
+  if (incombat) {
+    realmz_debug_mark("debug-menu:warp:ignored:combat");
+    flashmessage((StringPtr) "Debug: map warp is disabled during combat.", 30, 100, 75, 0);
+    return;
+  }
+
+  outdoor_record_size = (long)(sizeof field + sizeof door + sizeof randlevel + sizeof site);
+  dungeon_record_size = (long)(sizeof field + sizeof door + sizeof randlevel);
+
+  map_set = realmz_debug_pick_map_set();
+  if (map_set < 0)
+    return;
+
+  if (map_set == 0) {
+    record_count = realmz_debug_map_record_count(":Data Files:CL", outdoor_record_size);
+    if (record_count <= 0) {
+      realmz_debug_mark("debug-menu:warp:outdoor:missing-cache");
+      flashmessage((StringPtr) "Debug: outdoor map cache unavailable.", 30, 100, 75, 0);
+      return;
+    }
+    map_id = realmz_debug_pick_number("Warp outdoor map", "Map", 0, (short)(record_count - 1), (short)landlevel);
+    if (map_id < 0)
+      return;
+    realmz_debug_apply_outdoor_warp(map_id);
+  } else {
+    record_count = realmz_debug_map_record_count(":Data Files:CD", dungeon_record_size);
+    if (record_count <= 0) {
+      realmz_debug_mark("debug-menu:warp:dungeon:missing-cache");
+      flashmessage((StringPtr) "Debug: dungeon map cache unavailable.", 30, 100, 75, 0);
+      return;
+    }
+    map_id = realmz_debug_pick_number("Warp dungeon map", "Map", 0, (short)(record_count - 1), (short)dunglevel);
+    if (map_id < 0)
+      return;
+    realmz_debug_apply_dungeon_warp(map_id);
+  }
+}
+
+void RealmzDebugOpenTestMenu(void) {
+  MenuHandle debugmenu;
+  short itemHit;
+  Str255 nocliptext;
+
+  realmz_debug_mark("debug-menu:open");
+
+  debugmenu = GetMenu(131);
+  if (!debugmenu) {
+    realmz_debug_mark("debug-menu:missing-menu-resource");
+    flashmessage((StringPtr) "Debug menu unavailable.", 30, 100, 60, 0);
+    return;
+  }
+
+  InsertMenu(debugmenu, -1);
+  MyrAppendMenu(debugmenu, (Ptr) "Debug tools");
+  DisableItem(debugmenu, 1);
+  MyrAppendMenu(debugmenu, (Ptr) "Heal party and restore spell points");
+  MyrAppendMenu(debugmenu, (Ptr) "Win current battle");
+  if (!incombat)
+    DisableItem(debugmenu, 3);
+  if (debugmapnoclip)
+    strcpy((Ptr)nocliptext, (Ptr) "Map noclip: On");
+  else
+    strcpy((Ptr)nocliptext, (Ptr) "Map noclip: Off");
+  MyrAppendMenu(debugmenu, (Ptr)nocliptext);
+  MyrAppendMenu(debugmenu, (Ptr) "Map: teleport to X/Y...");
+  MyrAppendMenu(debugmenu, (Ptr) "Map: warp to map...");
+  MyrAppendMenu(debugmenu, (Ptr) "Scenario: return to start");
+  MyrAppendMenu(debugmenu, (Ptr) "Scenario: enable camp/cast/turn");
+  MyrAppendMenu(debugmenu, (Ptr) "Scenario: give item...");
+  MyrAppendMenu(debugmenu, (Ptr) "Scenario: set quest...");
+  MyrAppendMenu(debugmenu, (Ptr) "Scenario: trigger simple...");
+  MyrAppendMenu(debugmenu, (Ptr) "Scenario: trigger complex...");
+  MyrAppendMenu(debugmenu, (Ptr) "Cancel");
+  if (incombat) {
+    DisableItem(debugmenu, 5);
+    DisableItem(debugmenu, 6);
+    DisableItem(debugmenu, 7);
+    DisableItem(debugmenu, 8);
+    DisableItem(debugmenu, 9);
+    DisableItem(debugmenu, 10);
+    DisableItem(debugmenu, 11);
+    DisableItem(debugmenu, 12);
+  }
+
+  itemHit = PopUpMenuSelect(debugmenu, 50, 400, 0);
+
+  DeleteMenu(131);
+  ReleaseResource((Handle)debugmenu);
+
+  switch (itemHit) {
+    case 2:
+      realmz_debug_restore_party();
+      break;
+    case 3:
+      realmz_debug_win_battle();
+      break;
+    case 4:
+      realmz_debug_toggle_map_noclip();
+      break;
+    case 5:
+      realmz_debug_teleport_current_map();
+      break;
+    case 6:
+      realmz_debug_warp_map();
+      break;
+    case 7:
+      realmz_debug_return_to_scenario_start();
+      break;
+    case 8:
+      realmz_debug_enable_scenario_actions();
+      break;
+    case 9:
+      realmz_debug_give_item();
+      break;
+    case 10:
+      realmz_debug_set_quest();
+      break;
+    case 11:
+      realmz_debug_trigger_encounter(2);
+      break;
+    case 12:
+      realmz_debug_trigger_encounter(3);
+      break;
+    default:
+      realmz_debug_mark("debug-menu:close");
+      break;
+  }
+}
+#endif
 
 /**************** updateshopwings *************/
 void updateshopwings(int cl, int cr) {
