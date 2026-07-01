@@ -11,6 +11,14 @@
 
 static phosg::PrefixedLogger em_log("[EventManager] ", DEFAULT_LOG_LEVEL);
 
+#ifdef REALMZ_DEBUG
+static void (*realmz_debug_menu_handler)(void) = nullptr;
+
+extern "C" void RealmzDebugSetMenuHandler(void (*handler)(void)) {
+  realmz_debug_menu_handler = handler;
+}
+#endif
+
 static constexpr uint16_t EVMOD_RIGHT_CONTROL_KEY_DOWN = 0x8000;
 static constexpr uint16_t EVMOD_RIGHT_OPTION_KEY_DOWN = 0x4000;
 static constexpr uint16_t EVMOD_RIGHT_SHIFT_KEY_DOWN = 0x2000;
@@ -463,6 +471,14 @@ protected:
         this->set_modifier_value(EVMOD_COMMAND_KEY_DOWN, e.key.mod & SDL_KMOD_LCTRL);
 #else
         this->set_modifier_value(EVMOD_COMMAND_KEY_DOWN, e.key.mod & SDL_KMOD_GUI);
+#endif
+
+#ifdef REALMZ_DEBUG
+        if ((e.type == SDL_EVENT_KEY_DOWN) && (e.key.key == SDLK_F12) && realmz_debug_menu_handler) {
+          em_log.info_f("Opening hidden debug menu from F12.");
+          realmz_debug_menu_handler();
+          break;
+        }
 #endif
 
         uint32_t message = mac_message_for_sdl_key_code(e.key.key, this->modifier_flags);

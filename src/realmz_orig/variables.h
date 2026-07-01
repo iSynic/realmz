@@ -109,6 +109,9 @@ extern Boolean face, collidecheck[61];
 extern Boolean usequickshow, collideflag;
 extern short usecustomnames;
 extern char lastdeltax, lastdeltay;
+#ifdef REALMZ_DEBUG
+extern Boolean debugmapnoclip;
+#endif
 extern short musictoggle[20];
 extern int32_t musicpostionsave[20];
 extern PixPatHandle gHilite, gNeutral, gShadow, base, light, dark, whitepat;

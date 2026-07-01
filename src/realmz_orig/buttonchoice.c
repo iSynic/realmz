@@ -3,6 +3,15 @@
 
 extern Boolean tagger;
 
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * Let debug builds bypass outdoor movement blockers.
+ */
+#ifdef REALMZ_DEBUG
+#define REALMZ_DEBUG_MAP_NOCLIP debugmapnoclip
+#else
+#define REALMZ_DEBUG_MAP_NOCLIP FALSE
+#endif
+
 /****************** buttonchoice *************************/
 short buttonchoice(short skipin) {
   short temp, hit, oldhit, t, tt; /**** dont use exter ****/
@@ -150,7 +159,7 @@ short buttonchoice(short skipin) {
               //   if (mapstats[hit].needboad == 1)
               //     goto doboat; /**** hit boat ****/
               // }
-              if (mapstats[temp].needboad == 1)
+              if ((!REALMZ_DEBUG_MAP_NOCLIP) && (mapstats[temp].needboad == 1))
                 goto doboat; /**** hit boat ****/
               /* *** END CHANGES *** */
 
@@ -166,7 +175,7 @@ short buttonchoice(short skipin) {
               MyrBitSetShort(&field[partyx + lookx + deltax][partyy + looky + deltay], 2); /**** markes path *****/
             }
 
-            if (inboat) {
+            if ((inboat) && (!REALMZ_DEBUG_MAP_NOCLIP)) {
               if ((mapstats[hit].solid) && (mapstats[hit].needboad != 2)) /**** hit solid in boat ****/
               {
                 sound(-148);
@@ -186,7 +195,7 @@ short buttonchoice(short skipin) {
                   }
                 }
               }
-            } else {
+            } else if (!REALMZ_DEBUG_MAP_NOCLIP) {
               if (mapstats[hit].needboad == 1) /**** hit boat ****/
               {
               doboat:
@@ -207,7 +216,9 @@ short buttonchoice(short skipin) {
               hitland = 0;
             }
 
-            if ((!mapstats[hit].solid) && (!inboat) && (mapstats[hit].needboad != 2) && (!solidtile))
+            if (REALMZ_DEBUG_MAP_NOCLIP)
+              moveparty(1);
+            else if ((!mapstats[hit].solid) && (!inboat) && (mapstats[hit].needboad != 2) && (!solidtile))
               moveparty(1);
             else if ((inboat) && (mapstats[hit].needboad == 2))
               moveparty(1);
