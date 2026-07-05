@@ -1,6 +1,8 @@
 #include "realmzbuild.h"
 #include "variables.h"
 
+void aboutmovie(short textID, short dataid, short justify);
+
 /*************************************************************
                                 RedrawAllRealmz
 Myriad
@@ -256,68 +258,71 @@ short HandleMenuChoice(void) {
           showcontactinfo();
           break;
 
+        /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+         * Keep Info menu scrolling text in the Classic 320x320 movie window.
+         */
         case 4: /**** About Fantasoft *****/
-          movie(1128, 129, 1);
+          aboutmovie(1128, 129, 1);
           break;
 
         case 5: /**** About Prelude *****/
-          movie(1130, 129, 0);
+          aboutmovie(1130, 129, 0);
           break;
 
         case 6: /**** About Assault *****/
-          movie(1129, 129, 0);
+          aboutmovie(1129, 129, 0);
           break;
 
         case 7: /**** About Destroy *****/
-          movie(1132, 129, 0);
+          aboutmovie(1132, 129, 0);
           break;
 
         case 8: /**** About Castle *****/
-          movie(1131, 129, 0);
+          aboutmovie(1131, 129, 0);
           break;
 
         case 9: /**** About Grilochs Dragon *****/
-          movie(1134, 129, 0);
+          aboutmovie(1134, 129, 0);
           break;
 
         case 10: /**** About White Dragon *****/
-          movie(1133, 129, 0);
+          aboutmovie(1133, 129, 0);
           break;
 
         case 11: /**** About Mithril Vault *****/
-          movie(1136, 129, 0);
+          aboutmovie(1136, 129, 0);
           break;
 
         case 12: /**** Twin Sands of Time *****/
-          movie(1138, 129, 0);
+          aboutmovie(1138, 129, 0);
           break;
 
         case 13: /**** Trouble in the Sword Lands *****/
-          movie(1135, 129, 0);
+          aboutmovie(1135, 129, 0);
           break;
 
         case 14: /**** War in the Sword Lands *****/
-          movie(1137, 129, 0);
+          aboutmovie(1137, 129, 0);
           break;
 
         case 15: /**** Dagger of Silences *****/
-          movie(1139, 129, 0);
+          aboutmovie(1139, 129, 0);
           break;
 
         case 16: /**** About Half Truth *****/
-          movie(1140, 128, 0);
+          aboutmovie(1140, 128, 0);
           break;
 
         case 17: /**** About Unused *****/
-          movie(1141, 128, 0);
+          aboutmovie(1141, 128, 0);
           break;
 
         case 19: /**** About PC Editor *****/
-          movie(1150, 128, 0);
+          aboutmovie(1150, 128, 0);
           break;
 
         case 20: /**** About Divinity *****/
-          movie(1151, 128, 0);
+          aboutmovie(1151, 128, 0);
           break;
 
         default: /*** launch something from apple menu ***/

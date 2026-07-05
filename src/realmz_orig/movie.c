@@ -1,14 +1,29 @@
 #include "prototypes.h"
 #include "variables.h"
 
+static void moviewithgeometry(short textID, short dataid, short justify, short classicgeometry);
+
 /************************ movie ************************/
 void movie(short textID, short dataid, short justify) // � 'About...' dialog box.
+{
+  moviewithgeometry(textID, dataid, justify, FALSE);
+}
+
+void aboutmovie(short textID, short dataid, short justify)
+{
+  moviewithgeometry(textID, dataid, justify, TRUE);
+}
+
+static void moviewithgeometry(short textID, short dataid, short justify, short classicgeometry)
 {
   int32_t mouseuptime = 0;
   int32_t newcount;
   TEHandle textHand;
-  Rect txtRect = lookrect;
+  Rect movieRect;
+  Rect txtRect;
   WindowRef about; // � Pointer to dialog.
+  short movieTop;
+  short movieLeft;
   short x;
   Handle handle;
   StScrpHandle styleHdl;
@@ -18,16 +33,28 @@ void movie(short textID, short dataid, short justify) // � 'About...' dialog b
 
   GetGWorld(&savedPort, &savedDevice); // � Save the old port info.
 
-  // lookrect.right = lookrect.bottom = 320;
-  // lookrect.left = lookrect.top = 0;
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Restore Classic scrolling text geometry for Info menu movies.
+   */
+  if (classicgeometry) {
+    movieRect.top = txtRect.top = 0;
+    movieRect.left = txtRect.left = 0;
+    movieRect.bottom = txtRect.bottom = 320;
+    movieRect.right = txtRect.right = 320;
+    movieTop = (depth - 320) / 2;
+    movieLeft = (width - 320) / 2;
+  } else {
+    movieRect = lookrect;
+    txtRect = lookrect;
+    movieTop = GlobalTop;
+    movieLeft = GlobalLeft;
+  }
 
   // � Setup scrolling window for text.
   about = GetNewWindow(133, nil, (WindowPtr)-1);
   SetPort(GetWindowPort(about));
-  // NOTE(fuzziqersoftware): This appears to be a Realmz 8 bug? The text rect
-  // is larger than the window size, so the text overflows off the right edge.
-  // We fix this by resizing the window to the text rect size.
-  SizeWindow(about, txtRect.right - txtRect.left, txtRect.bottom - txtRect.top, 0);
+  if (!classicgeometry)
+    SizeWindow(about, movieRect.right - movieRect.left, movieRect.bottom - movieRect.top, 0);
   ForeColor(blackColor);
   BackColor(whiteColor);
   backpat = GetPixPat(dataid);
@@ -35,13 +62,12 @@ void movie(short textID, short dataid, short justify) // � 'About...' dialog b
   TextSize(10);
   TextFont(genevafont);
   TextMode(1);
-  if (FrontWindow() != GetDialogWindow(background))
-    MoveWindow(about, GlobalLeft, GlobalTop, TRUE);
+  MoveWindow(about, movieLeft, movieTop, TRUE);
   ShowWindow(about);
-  EraseRect(&lookrect);
+  EraseRect(&movieRect);
 
   GetGWorld(&savedPort, &savedDevice); /**** create offworld text area *****/
-  NewGWorld(&backdrop, 8, &lookrect, 0L, 0L, 0L);
+  NewGWorld(&backdrop, 8, &movieRect, 0L, 0L, 0L);
   SetGWorld(backdrop, NIL);
 #ifndef PC // Myriad
   backdroppix = GetPortPixMap(backdrop);
@@ -52,7 +78,7 @@ void movie(short textID, short dataid, short justify) // � 'About...' dialog b
   BackColor(whiteColor);
   TextMode(1);
 
-  EraseRect(&lookrect);
+  EraseRect(&movieRect);
 
   // � Create styled TERecord.
   textHand = TEStyleNew(&txtRect, &txtRect);
@@ -88,9 +114,9 @@ backtoit:
     newcount = TickCount();
     // � scroll up a pixel
     TEScroll(0, -1, textHand);
-    EraseRect(&lookrect);
+    EraseRect(&movieRect);
     TEUpdate(&txtRect, textHand); // � Draw text in viewRect.
-    CopyBits(src, dst, &lookrect, &lookrect, 0, NIL);
+    CopyBits(src, dst, &movieRect, &movieRect, 0, NIL);
     do {
 
     } while (TickCount() < newcount + 3);
@@ -123,9 +149,9 @@ backtoit:
         TEScroll(0, 25, textHand);
 
       gTheEvent.where.v = point.v;
-      EraseRect(&lookrect);
+      EraseRect(&movieRect);
       TEUpdate(&txtRect, textHand); // � Draw text in viewRect.
-      CopyBits(src, dst, &lookrect, &lookrect, 0, NIL);
+      CopyBits(src, dst, &movieRect, &movieRect, 0, NIL);
     }
 
   } else {
