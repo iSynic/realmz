@@ -1,6 +1,57 @@
 #include "prototypes.h"
 #include "variables.h"
 
+static Rect scaled_map_rect(Rect source, Rect maprect) {
+  Rect dest;
+  short mapsize;
+
+  mapsize = maprect.right - maprect.left;
+  dest.top = maprect.top + (source.top * mapsize) / 320;
+  dest.left = maprect.left + (source.left * mapsize) / 320;
+  dest.bottom = maprect.top + (source.bottom * mapsize) / 320;
+  dest.right = maprect.left + (source.right * mapsize) / 320;
+
+  return dest;
+}
+
+static Rect centered_map_rect(void) {
+  Rect dest;
+  short width, height, mapsize;
+
+  width = lookrect.right - lookrect.left;
+  height = lookrect.bottom - lookrect.top;
+  mapsize = (width < height) ? width : height;
+
+  dest.top = lookrect.top + (height - mapsize) / 2;
+  dest.left = lookrect.left + (width - mapsize) / 2;
+  dest.bottom = dest.top + mapsize;
+  dest.right = dest.left + mapsize;
+
+  return dest;
+}
+
+static void move_map_note_dialog(DialogRef dialog) {
+  Rect bounds;
+  short width, height, lowerwidth, left, top;
+
+  if (!screensize) {
+    MoveWindow(GetDialogWindow(dialog), GlobalLeft - 1, GlobalTop + 321, FALSE);
+    return;
+  }
+
+  GetPortBounds(GetWindowPort(dialog), &bounds);
+  width = bounds.right - bounds.left;
+  height = bounds.bottom - bounds.top;
+  lowerwidth = buttons.left;
+
+  left = 0;
+  if (width < lowerwidth)
+    left = (lowerwidth - width) / 2;
+  top = info.bottom - height - 1;
+
+  MoveWindow(GetDialogWindow(dialog), GlobalLeft + left, GlobalTop + top, FALSE);
+}
+
 /********************************* fastplotmap ***************/
 void fastplotmap(short id, Rect destrect) {
   FILE* fp = NULL;
@@ -57,7 +108,10 @@ void showmap(short mapnumber) {
   FILE* fp = NULL;
   DialogRef show;
   Boolean tag = FALSE;
+  PicHandle picture = NIL;
   Rect temprect;
+  Rect maprect;
+  Boolean scalegeneratedmap = FALSE;
   short oldview, t, tt, temp, tempisdung;
 
   tempisdung = indung;
@@ -80,17 +134,38 @@ void showmap(short mapnumber) {
     movie(themap.show, 129, 0);
     goto out;
   } else if (themap.pictid) {
-    itemRect = lookrect;
     SetPort(GetWindowPort(look));
-    if ((themap.rect[2]) || (themap.rect[3])) {
-      itemRect.top = themap.rect[0];
-      itemRect.left = themap.rect[1];
-      itemRect.bottom = themap.rect[2];
-      itemRect.right = themap.rect[3];
+    picture = GetPicture(themap.pictid);
+    if (picture) {
+      /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+       * Center picture-backed maps at their native size unless the map defines a draw rect.
+       */
+      itemRect = (**picture).picFrame;
+      OffsetRect(&itemRect, -itemRect.left, -itemRect.top);
+
+      ForeColor(blackColor);
+      PaintRect(&lookrect);
+
+      if ((themap.rect[2]) || (themap.rect[3])) {
+        itemRect.top = themap.rect[0];
+        itemRect.left = themap.rect[1];
+        itemRect.bottom = themap.rect[2];
+        itemRect.right = themap.rect[3];
+      } else {
+        OffsetRect(&itemRect, lookrect.left + ((lookrect.right - lookrect.left) - itemRect.right) / 2,
+            lookrect.top + ((lookrect.bottom - lookrect.top) - itemRect.bottom) / 2);
+      }
+
+      DrawPicture(picture, &itemRect);
     }
-    pict(themap.pictid, itemRect);
   } else {
     int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * Scale generated land maps to fit the enlarged game viewport without changing map coverage.
+     */
+    maprect = centered_map_rect();
+    scalegeneratedmap = !themap.isdungeon;
 
     temp = 320 / themap.iconsize;
     if (temp * themap.iconsize < 320)
@@ -116,9 +191,10 @@ void showmap(short mapnumber) {
     temprect.right = temprect.bottom = themap.iconsize;
 
     if (!indung) {
+      PaintRect(&lookrect);
       for (t = themap.starty; t < temp + themap.starty; t++) {
         for (tt = themap.startx; tt < themap.startx + temp; tt++) {
-          fastplotmap(field[tt][t], temprect);
+          fastplotmap(field[tt][t], scaled_map_rect(temprect, maprect));
           OffsetRect(&temprect, themap.iconsize, 0);
         }
         OffsetRect(&temprect, -(themap.iconsize * temp), themap.iconsize);
@@ -164,6 +240,9 @@ void showmap(short mapnumber) {
           InsetRect(&temprect, -((32 - themap.iconsize) / 2), -((32 - themap.iconsize) / 2));
         }
 
+        if (scalegeneratedmap)
+          temprect = scaled_map_rect(temprect, maprect);
+
         if (iconhand) {
           PlotCIcon(&temprect, iconhand);
           DisposeCIcon(iconhand);
@@ -191,16 +270,22 @@ void showmap(short mapnumber) {
         icon.right = icon.left + 64;
         icon.bottom = icon.top + 64;
 
+        if (scalegeneratedmap)
+          icon = scaled_map_rect(icon, maprect);
+
         ploticon3(138, icon);
       }
     }
   }
 
-  show = GetNewDialog(169, 0L, (WindowPtr)-1L);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Use the large-screen map note dialog over the enlarged message panel and restore its border.
+   */
+  show = GetNewDialog(169 + (1000 * screensize), 0L, (WindowPtr)-1L);
   SetPortDialogPort(show);
   BackPixPat(base);
   TextFont(defaultfont);
-  MoveWindow(GetDialogWindow(show), GlobalLeft - 1 + (leftshift / 2), GlobalTop + 321 + (downshift / 2), FALSE);
+  move_map_note_dialog(show);
   ForeColor(yellowColor);
   gCurrent = show;
   ShowWindow(GetDialogWindow(show));
@@ -209,6 +294,10 @@ void showmap(short mapnumber) {
 
   DrawDialog(show);
   MyrPascalDiStr(2, themap.note);
+  GetDialogItem(show, 2, &itemType, &itemHandle, &itemRect);
+  InsetRect(&itemRect, -2, -2);
+  ForeColor(yellowColor);
+  FrameRect(&itemRect);
 
   indung = tempisdung;
 
@@ -217,7 +306,7 @@ void showmap(short mapnumber) {
   else
     loadland(dunglevel, TRUE);
 
-  flashmessage((StringPtr) "Click Mouse", 350, 100, 0, 30005);
+  flashmessage((StringPtr) "Click Mouse", 350 + leftshift, 100, 0, 30005);
 
   xy(0);
   DisposeDialog(show);
