@@ -49,9 +49,7 @@ void updatespec(short mode, struct character* character) {
       // clang-format on
   };
 
-  short agility, brawn, direction, t, tt;
-
-  direction = mode == 2 ? -1 : 1;
+  short t, tt;
 
   loadprofile(character->race, character->caste);
 
@@ -66,27 +64,19 @@ void updatespec(short mode, struct character* character) {
           character->spec[t] = 0;
       }
 
-      /* fall through */
-
-    case 2: /****** remove attribute modifiers ******/
-    case 3: /****** add attribute modifiers ******/
-
-      brawn = pin(character->st + character->magst, 3, 30);
-      agility = pin(character->de, 3, 30);
-
       for (tt = 0; tt < 19; tt++) {
-        if (range1[tt] == brawn) {
+        if (range1[tt] == character->st) {
           for (t = 0; t < 12; t++)
             if (caste.specialability[0][t])
-              character->spec[t] += direction * stmodif[t][tt];
+              character->spec[t] += stmodif[t][tt];
         }
       }
 
       for (tt = 0; tt < 19; tt++) {
-        if (range1[tt] == agility) {
+        if (range1[tt] == character->de) {
           for (t = 0; t < 12; t++)
             if (caste.specialability[0][t])
-              character->spec[t] += direction * demodif[t][tt];
+              character->spec[t] += demodif[t][tt];
         }
       }
 
@@ -103,17 +93,15 @@ void updatespec(short mode, struct character* character) {
       break;
   }
 
-  if ((mode != 2) && (mode != 3)) {
-    for (t = 0; t < 12; t++)
-      character->spec[t] = pin(character->spec[t], 0, 100);
+  for (t = 0; t < 12; t++)
+    character->spec[t] = pin(character->spec[t], 0, 100);
 
-    character->dodge = pin(character->dodge, 0, 100);
-    character->missile = pin(character->missile, 0, 100);
-    character->magres = pin(character->magres, 0, 100);
-    character->twohand = pin(character->twohand, 0, 100);
-    character->damage = pin(character->damage, 0, 200);
-    character->handtohand = pin(character->handtohand, 0, 200);
-  }
+  character->dodge = pin(character->dodge, 0, 100);
+  character->missile = pin(character->missile, 0, 100);
+  character->magres = pin(character->magres, 0, 100);
+  character->twohand = pin(character->twohand, 0, 100);
+  character->damage = pin(character->damage, 0, 200);
+  character->handtohand = pin(character->handtohand, 0, 200);
 }
 /* *** END CHANGES *** */
 
@@ -147,7 +135,6 @@ static void updateattributestats(struct character* character, short direction) {
 
 void updatestatmods(struct character* character, short direction) {
   updateattributestats(character, direction);
-  updatespec(direction < 0 ? 2 : 3, character);
 }
 
 void initializestatmods(struct character* character) {
