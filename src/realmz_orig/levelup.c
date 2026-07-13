@@ -180,7 +180,11 @@ short levelup(short character, short mode) {
     }
   }
 
-  updatespec(0); /****** 0 = Levelup ******/
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Pass the character being updated explicitly.
+   */
+  updatespec(0, &characterl); /****** 0 = Levelup ******/
+  /* *** END CHANGES *** */
 
   if (!mode) {
     FlushEvents(everyEvent, 0);

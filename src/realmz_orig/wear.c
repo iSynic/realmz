@@ -166,7 +166,15 @@ short wear(short character, short itemnum, short play) {
       warn(7);
     }
     characterr = c[character];
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(iSynic): Include equipped magic strength when calculating derived bonuses.
+     */
+    if (item.st)
+      updatestatmods(&c[character], -1);
     c[character].magst += item.st;
+    if (item.st)
+      updatestatmods(&c[character], 1);
+    /* *** END CHANGES *** */
 
     if (c[character].ac + item.ac < 0)
       c[character].ac = 0;

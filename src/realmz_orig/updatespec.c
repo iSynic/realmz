@@ -2,7 +2,10 @@
 #include "variables.h"
 
 /******************************* updatespec **************************/
-void updatespec(short mode) {
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * NOTE(iSynic): Update a specific character and keep special ability table accesses in bounds.
+ */
+void updatespec(short mode, struct character* character) {
   char demodif[12][19] = {
       // clang-format off
       /**  3    4    5    6    7   17   18   19   20   21   22   23   24   25   26   27   28   29   30 **/
@@ -46,55 +49,114 @@ void updatespec(short mode) {
       // clang-format on
   };
 
-  loadprofile(characterl.race, characterl.caste);
+  short agility, brawn, direction, t, tt;
+
+  direction = mode == 2 ? -1 : 1;
+
+  loadprofile(character->race, character->caste);
 
   switch (mode) {
     case 1: /****** initialize ******/
 
-      for (t = 0; t < 15; t++) // v7.1
+      for (t = 0; t < 14; t++) // v7.1
       {
         if (caste.specialability[0][t])
-          characterl.spec[t] = caste.specialability[0][t] + races.specialability[t];
+          character->spec[t] = caste.specialability[0][t] + races.specialability[t];
         else
-          characterl.spec[t] = 0;
+          character->spec[t] = 0;
       }
 
-      for (tt = 0; tt < 19; tt++) // v7.1
-      {
-        if (range1[tt] == characterl.st) {
-          for (t = 0; t < 14; t++)
+      /* fall through */
+
+    case 2: /****** remove attribute modifiers ******/
+    case 3: /****** add attribute modifiers ******/
+
+      brawn = pin(character->st + character->magst, 3, 30);
+      agility = pin(character->de, 3, 30);
+
+      for (tt = 0; tt < 19; tt++) {
+        if (range1[tt] == brawn) {
+          for (t = 0; t < 12; t++)
             if (caste.specialability[0][t])
-              characterl.spec[t] += stmodif[t][tt];
+              character->spec[t] += direction * stmodif[t][tt];
         }
       }
 
-      for (tt = 0; tt < 19; tt++)
-        if (range1[tt] == characterl.de) {
-          for (t = 0; t < 14; t++)
+      for (tt = 0; tt < 19; tt++) {
+        if (range1[tt] == agility) {
+          for (t = 0; t < 12; t++)
             if (caste.specialability[0][t])
-              characterl.spec[t] += demodif[t][tt];
+              character->spec[t] += direction * demodif[t][tt];
         }
+      }
 
       break;
 
     default:
 
-      for (t = 0; t < 15; t++) // v7.1
+      for (t = 0; t < 14; t++) // v7.1
       {
         if (caste.specialability[1][t])
-          characterl.spec[t] += Rand(caste.specialability[1][t]);
+          character->spec[t] += Rand(caste.specialability[1][t]);
       }
 
       break;
   }
 
-  for (t = 0; t < 12; t++)
-    characterl.spec[t] = pin(characterl.spec[t], 0, 100);
+  if ((mode != 2) && (mode != 3)) {
+    for (t = 0; t < 12; t++)
+      character->spec[t] = pin(character->spec[t], 0, 100);
 
-  characterl.dodge = pin(characterl.dodge, 0, 100);
-  characterl.missile = pin(characterl.missile, 0, 100);
-  characterl.magres = pin(characterl.magres, 0, 100);
-  characterl.twohand = pin(characterl.twohand, 0, 100);
-  characterl.damage = pin(characterl.damage, 0, 200);
-  characterl.handtohand = pin(characterl.handtohand, 0, 200);
+    character->dodge = pin(character->dodge, 0, 100);
+    character->missile = pin(character->missile, 0, 100);
+    character->magres = pin(character->magres, 0, 100);
+    character->twohand = pin(character->twohand, 0, 100);
+    character->damage = pin(character->damage, 0, 200);
+    character->handtohand = pin(character->handtohand, 0, 200);
+  }
 }
+/* *** END CHANGES *** */
+
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * NOTE(iSynic): Initialize and keep derived character stats in sync when attributes change.
+ */
+static void updateattributestats(struct character* character, short direction) {
+  short magicres, saveindex;
+
+  loadprofile(character->race, character->caste);
+
+  strength(character->st + character->magst);
+  character->tohit += direction * temp;
+  character->damage += direction * damage;
+
+  magicres = (character->in + character->wi) / 10;
+  if (character->in > 15)
+    magicres += character->in - 15;
+  if (character->wi > 15)
+    magicres += character->wi - 15;
+  character->magres += direction * magicres * caste.magres;
+
+  character->dodge += direction * 2 * character->de;
+  if (character->de > 14)
+    character->ac += direction * 2 * (character->de - 14);
+
+  if (character->co > 18)
+    for (saveindex = 0; saveindex < 8; saveindex++)
+      character->save[saveindex] += direction * 5 * (character->co - 18);
+}
+
+void updatestatmods(struct character* character, short direction) {
+  updateattributestats(character, direction);
+  updatespec(direction < 0 ? 2 : 3, character);
+}
+
+void initializestatmods(struct character* character) {
+  short saveindex;
+
+  updateattributestats(character, 1);
+  updatespec(1, character);
+
+  for (saveindex = 0; saveindex < 8; saveindex++)
+    character->save[saveindex] = pin(character->save[saveindex], -99, 120);
+}
+/* *** END CHANGES *** */

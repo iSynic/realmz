@@ -121,67 +121,49 @@ void resolvespell(void) {
     }
   }
 
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Recalculate derived stats safely when an attribute-changing effect resolves.
+   */
   if (special == 66) /****** increase attirbute *****/
   {
     if (!spellinfo.size)
       spellinfo.size = Rand(5);
     for (t = 0; t <= charnum; t++)
       if (track[t]) {
-        loadprofile(0, c[t].caste);
-        attr = &c[t].st;
-        attr += (spellinfo.size - 1);
-        if (*attr < 25) {
-          *attr += 1;
-
+        if ((spellinfo.size > 0) && (spellinfo.size < 7)) {
           switch (spellinfo.size) {
-            case 1: /***** Brawn ****/
-              c[t].st--;
-
-              strength(c[t].st);
-              c[t].damage -= damage;
-              c[t].tohit -= temp;
-
-              c[t].st++;
-              strength(c[t].st);
-              c[t].damage += damage;
-              c[t].tohit += temp;
-
+            case 1:
+              attr = &c[t].st;
               break;
-
-            case 2: /***** Knowledge ****/
-              if (c[t].in > 15)
-                c[t].magres += caste.magres;
+            case 2:
+              attr = &c[t].in;
               break;
-
-            case 3: /***** Judgment ****/
-              if (c[t].wi > 15)
-                c[t].magres += caste.magres;
+            case 3:
+              attr = &c[t].wi;
               break;
-
-            case 4: /***** Agility ****/
-              if (c[t].de > 14)
-                c[t].ac += 2;
+            case 4:
+              attr = &c[t].de;
               break;
-
-            case 5: /***** Vitality ****/
-              if (c[t].co > 18)
-                for (tt = 0; tt < 8; tt++)
-                  c[t].save[tt] += 5;
+            case 5:
+              attr = &c[t].co;
               break;
-
-            case 10: /***** Stamina ****/
-              c[t].staminamax += Rand(8);
-              break;
-
-            case 11: /***** Spell Points ****/
-              if (c[t].spellpointsmax > 0)
-                c[t].spellpointsmax += Rand(20);
+            default:
+              attr = &c[t].lu;
               break;
           }
-        } else
-          warn(79);
+          if (*attr < 25) {
+            updatestatmods(&c[t], -1);
+            (*attr)++;
+            updatestatmods(&c[t], 1);
+          } else
+            warn(79);
+        } else if (spellinfo.size == 10)
+          c[t].staminamax += Rand(8);
+        else if ((spellinfo.size == 11) && (c[t].spellpointsmax > 0))
+          c[t].spellpointsmax += Rand(20);
       }
   }
+  /* *** END CHANGES *** */
 
   if (special == 57) /****** heal ******/
   {

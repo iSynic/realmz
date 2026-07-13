@@ -159,27 +159,19 @@ waynew:
     }
 
     /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-     * NOTE(jpetrie): Initial damage and to-hit bonus are computed here now. Previously they were computed later (see
-     * my comment below), after the application of age modifiers. However, applyage() handles damage and to-hit by
-     * subtracting the current bonuses, updating the character's strength based on aging progression, and they adding
-     * the bonuses based on the new strength back on the character. This means it was assuming initial damage and to-hit
-     * were already set in the character record, and since that was not the case, bonuses were ending up higher than
-     * intended and did not scale correctly.
+     * NOTE(iSynic): Defer derived stat calculations while applying initial age changes.
      */
-    strength(characterl.st);
-    characterl.damage += damage;
-    characterl.tohit += temp;
-
     characterl.currentagegroup = 0;
-    applyage(characterl.race, 1, 1); /*********** applies initial Youth age parameters ***/
+    applyage(characterl.race, 1, 1, FALSE); /*********** applies initial Youth age parameters ***/
     if (caste.minimumagegroup > 1)
-      applyage(characterl.race, 2, 1); /*********** applies initial Young age parameters ***/
+      applyage(characterl.race, 2, 1, FALSE); /*********** applies initial Young age parameters ***/
     if (caste.minimumagegroup > 2)
-      applyage(characterl.race, 3, 1); /*********** applies initial Adult age parameters ***/
+      applyage(characterl.race, 3, 1, FALSE); /*********** applies initial Adult age parameters ***/
     if (caste.minimumagegroup > 3)
-      applyage(characterl.race, 4, 1); /*********** applies initial Prime age parameters ***/
+      applyage(characterl.race, 4, 1, FALSE); /*********** applies initial Prime age parameters ***/
     if (caste.minimumagegroup > 4)
-      applyage(characterl.race, 5, 1); /*********** applies initial Senior age parameters ***/
+      applyage(characterl.race, 5, 1, FALSE); /*********** applies initial Senior age parameters ***/
+    /* *** END CHANGES *** */
 
     for (t = 0; t < 7; t++) {
       offset = 0;
@@ -245,22 +237,14 @@ waynew:
     characterl.staminamax += temp;
 
     /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-     * NOTE(jpetrie): This is where the initial to-hit and damage bonuses were originally calculated. That code has
-     * been moved (see my comment above) to fix a bug related to age modifier application.
+     * NOTE(iSynic): Leave attribute-derived values for the shared initialization below.
      */
-
-    characterl.magres = (characterl.in + characterl.wi) / 10;
-
-    characterl.magres *= caste.magres; /************ caste.magres must be 1 or higher *********/
-
+    characterl.magres = races.magres;
     characterl.ac = 0;
-    if (characterl.de > 14)
-      characterl.ac -= 2 * (14 - characterl.de);
-
-    characterl.dodge = 2 * characterl.de + caste.dodge[0];
+    characterl.dodge = caste.dodge[0];
+    /* *** END CHANGES *** */
 
     characterl.age = randrange(races.agerange[caste.minimumagegroup - 1][0], races.agerange[caste.minimumagegroup - 1][1]);
-    characterl.magres += races.magres;
     characterl.twohand = races.twohand + caste.twohand;
     characterl.missile = (races.missile + caste.missile[0]);
 
@@ -268,13 +252,6 @@ waynew:
       characterl.missile = 0;
 
     characterl.movementmax = races.basemove + caste.movebonus;
-
-    for (t = 0; t < 8; t++) {
-      if (characterl.save[t] < -99)
-        characterl.save[t] = -99;
-      if (characterl.save[t] > 120)
-        characterl.save[t] = 120;
-    }
 
     characterl.age *= 365;
     characterl.spellcastertype = characterl.spellpoints = characterl.spellpointsmax = 0;
@@ -300,7 +277,11 @@ waynew:
     characterl.stamina = characterl.staminamax;
     characterl.spellpoints = characterl.spellpointsmax;
 
-    updatespec(1); /****** 1 = Initialize Spec *******/
+    /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+     * NOTE(iSynic): Apply every attribute-derived bonus after initial stats and aging are final.
+     */
+    initializestatmods(&characterl);
+    /* *** END CHANGES *** */
 
     c[0] = characterl; /********** do levelup for advanced characters ***********/
     if (level)

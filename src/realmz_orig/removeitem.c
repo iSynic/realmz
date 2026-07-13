@@ -100,7 +100,15 @@ short removeitem(short character, short itemnum, short play, short force) {
   }
 
   c[character].items[itemnum].equip = FALSE;
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Recalculate derived bonuses when equipped magic strength is removed.
+   */
+  if (item.st)
+    updatestatmods(&c[character], -1);
   c[character].magst -= item.st;
+  if (item.st)
+    updatestatmods(&c[character], 1);
+  /* *** END CHANGES *** */
   c[character].maglu -= item.lu;
   c[character].magres -= item.magres;
   if (c[character].ac - item.ac > 0)

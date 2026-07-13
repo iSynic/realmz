@@ -8,22 +8,26 @@ short age(int32_t age, short raceid, short currentagegroup) {
 
   nextyear = age / 365;
 
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Recalculate derived stats when an existing character changes age groups.
+   */
   for (t = 0; t < 5; t++) {
     if (twixt(nextyear, races.agerange[t][0], races.agerange[t][1])) {
       if ((t + 1) != (currentagegroup)) {
         if (((t + 1) > (currentagegroup)) && (currentagegroup < 5)) {
           characterl.currentagegroup++;
-          applyage(raceid, characterl.currentagegroup, 1);
+          applyage(raceid, characterl.currentagegroup, 1, TRUE);
           return (1);
         }
         if (((t + 1) < (currentagegroup)) && (currentagegroup > 1)) {
-          applyage(raceid, characterl.currentagegroup, -1); /****** erase current age group change because we are getting younger ****/
+          applyage(raceid, characterl.currentagegroup, -1, TRUE); /****** erase current age group change because we are getting younger ****/
           characterl.currentagegroup--;
           return (-1);
         }
       }
     }
   }
+  /* *** END CHANGES *** */
   return (NIL);
 }
 
@@ -119,24 +123,21 @@ void showageupdate(short who, short agegroup, short backup) {
   }
 }
 
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * NOTE(iSynic): Allow initial aging to defer derived stats until character creation is complete.
+ */
 /******************** applyage ***********************/
-void applyage(short raceid, short agegroup, short direction) {
+void applyage(short raceid, short agegroup, short direction, Boolean update_stats) {
   short t;
 
-  loadprofile(raceid, 0);
+  loadprofile(raceid, characterl.caste);
+
+  if (update_stats)
+    updatestatmods(&characterl, -1);
 
   characterl.currentagegroup = agegroup;
 
-  strength(characterl.st);
-  characterl.tohit -= temp;
-  characterl.damage -= damage;
-
   characterl.st += direction * races.agechange[agegroup - 1][0];
-
-  strength(characterl.st);
-  characterl.tohit += temp;
-  characterl.damage += damage;
-
   characterl.in += direction * races.agechange[agegroup - 1][1];
   characterl.wi += direction * races.agechange[agegroup - 1][2];
   characterl.de += direction * races.agechange[agegroup - 1][3];
@@ -151,4 +152,8 @@ void applyage(short raceid, short agegroup, short direction) {
 
   for (t = 0; t < 7; t++)
     characterl.save[t] += direction * races.agechange[agegroup - 1][8 + t];
+
+  if (update_stats)
+    updatestatmods(&characterl, 1);
 }
+/* *** END CHANGES *** */

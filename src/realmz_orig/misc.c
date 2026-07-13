@@ -382,6 +382,13 @@ void updateprep(void) {
 void strength(short st) {
   temp = damage = 0;
 
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Treat strength above 30 as the maximum table entry.
+   */
+  if (st > 30)
+    st = 30;
+  /* *** END CHANGES *** */
+
   if (st < 4)
     temp = -20;
   else {

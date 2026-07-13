@@ -19,7 +19,11 @@ void compactheap(void);
 short actionpicker(void);
 short age(int32_t age, short raceid, short currentagegroup);
 void showageupdate(short who, short agegroup, short backup);
-void applyage(short raceid, short agegroup, short direction);
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * NOTE(iSynic): Allow character creation to defer derived stat updates while applying age changes.
+ */
+void applyage(short raceid, short agegroup, short direction, Boolean update_stats);
+/* *** END CHANGES *** */
 short attack(short chare, short mon);
 short attack2(short mon, short chare, short attacknum);
 void beast(short who, short mode, short specific);
@@ -317,7 +321,13 @@ void updateitems(short top, short bottom);
 void updatelight(short who, short offpict);
 void updatepictbox(short who, short mode, short noplotmode);
 void updateshopwings(int cl, int cr);
-void updatespec(short mode);
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * NOTE(iSynic): Pass the affected character to the shared derived-stat helpers.
+ */
+void updatespec(short mode, struct character* character);
+void updatestatmods(struct character* character, short direction);
+void initializestatmods(struct character* character);
+/* *** END CHANGES *** */
 void updatespell(short force);
 void viewcharacter(short view, short mode);
 void warn(short string);
