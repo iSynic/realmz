@@ -163,8 +163,10 @@ jobs:
           dmg=$(find build-macos -maxdepth 1 -name '*.dmg' -print -quit)
           test -n "$dmg"
           hdiutil attach "$dmg" -nobrowse -noautoopen -plist > mount.plist
-          mountpoint=$(python3 -c 'import plistlib,sys; print(plistlib.load(open("mount.plist","rb"))["system-entities"][-1]["mount-point"])')
+          mountpoint=$(python3 -c 'import plistlib; entities=plistlib.load(open("mount.plist","rb"))["system-entities"]; print(next(entity["mount-point"] for entity in entities if entity.get("mount-point")))')
           test -x "$mountpoint/Realmz.app/Contents/MacOS/Realmz"
+          test -d "$mountpoint/Realmz.app/Contents/Resources/lib"
+          find "$mountpoint/Realmz.app/Contents/Resources/lib" -type f -name 'libSDL3*.dylib' -print -quit | grep -q .
           /usr/libexec/PlistBuddy -c 'Print :NSHighResolutionCapable' "$mountpoint/Realmz.app/Contents/Info.plist" | grep -q true
           lipo -verify_arch x86_64 arm64 "$mountpoint/Realmz.app/Contents/MacOS/Realmz"
           hdiutil detach "$mountpoint"
