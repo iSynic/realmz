@@ -18,6 +18,7 @@ project(Realmz
     DESCRIPTION "Classic turn-based RPG from Fantasoft"
     LANGUAGES C CXX
 )
+include(GNUInstallDirs)
 # Enable Objective-C only on macOS (needed for MenuController.mm)
 if(APPLE)
     enable_language(OBJC)
@@ -254,6 +255,8 @@ elseif(WIN32)
     list(APPEND realmz_lib_LINK_LIBRARIES
         bcrypt # Used by phosg::phosg during compilation for windows targets
     )
+elseif(UNIX)
+    list(APPEND SOURCES src/linux/MenuController.cpp)
 endif()
 
 # Installed in Contents/Resources
@@ -435,6 +438,35 @@ elseif(WIN32)
         message("Found asan lib at ${libasan}")
         install(FILES ${libc++} ${libunwind} ${libasan} DESTINATION ${CMAKE_INSTALL_BINDIR})
     endif()
+elseif(UNIX)
+    install(TARGETS Realmz DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES ${RESOURCE_FILES} DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES ${DATA_RESOURCE_FILES} DESTINATION "${CMAKE_INSTALL_BINDIR}/Data Files")
+    install(DIRECTORY "base/Realmz/Scenarios" DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES ${CHARACTER_DATA_FILES} DESTINATION "${CMAKE_INSTALL_BINDIR}/Character Files")
+
+    # Keep the SDL shared libraries beside the executable in the portable Linux archive.
+    install(IMPORTED_RUNTIME_ARTIFACTS
+        SDL3-shared
+        SDL3_ttf-shared
+        SDL3_image-shared
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES
+        $<TARGET_FILE:SDL3-shared>
+        $<TARGET_SONAME_FILE:SDL3-shared>
+        $<TARGET_LINKER_FILE:SDL3-shared>
+        $<TARGET_FILE:SDL3_ttf-shared>
+        $<TARGET_SONAME_FILE:SDL3_ttf-shared>
+        $<TARGET_LINKER_FILE:SDL3_ttf-shared>
+        $<TARGET_FILE:SDL3_image-shared>
+        $<TARGET_SONAME_FILE:SDL3_image-shared>
+        $<TARGET_LINKER_FILE:SDL3_image-shared>
+        DESTINATION ${CMAKE_INSTALL_BINDIR})
+    set_target_properties(Realmz PROPERTIES
+        INSTALL_RPATH "$ORIGIN"
+        BUILD_WITH_INSTALL_RPATH TRUE
+    )
 endif()
 
 
@@ -455,5 +487,8 @@ elseif(APPLE)
     set(CPACK_BUNDLE_PLIST "${PROJECT_BINARY_DIR}/Info.plist")
     set(CPACK_BUNDLE_ICON "${PROJECT_SOURCE_DIR}/bundle/AppIcon.icns")
     set(CPACK_BUNDLE_STARTUP_COMMAND Realmz)
+elseif(UNIX)
+    set(CPACK_GENERATOR "TGZ")
+    set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${Realmz_VERSION}-Linux")
 endif()
 include(CPack)

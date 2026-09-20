@@ -241,6 +241,13 @@ extern short blankround;
 extern int32_t mouseuptime;
 extern Handle myMenuBar, copywright;
 extern int32_t templong;
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * POSIX exposes a function named select. Keep this legacy global's source
+ * spelling while giving it a distinct link-time name on modern Unix hosts.
+ * This header is included after the platform headers, so the system
+ * declaration is not affected by the macro.
+ */
+#define select realmz_selection
 extern short select[6];
 extern Boolean needupdate, shortupdateneed, putup;
 extern short mapshiftx, mapshifty, divineref, itemrefnum, refnum, jewelsrefnum, portraitrefnum;
