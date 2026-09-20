@@ -693,7 +693,15 @@ void centercursor(void) {
 
 /****************************** ToolBoxInit **********************/
 void ToolBoxInit(void) {
+#ifdef REALMZ_CLASSIC
   InitGraf(&qd.thePort);
+#else
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * The modern QuickDraw replacement initializes the whole global context,
+   * while the classic Toolbox call receives the port field.
+   */
+  InitGraf(&qd);
+#endif
   InitWindows();
 #ifdef REALMZ_CLASSIC
   GetDateTime((unsigned int32_t*)&qd.randSeed);
