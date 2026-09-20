@@ -45,7 +45,9 @@ jobs:
             mingw-w64-clang-x86_64-zlib
 
       - name: Download SDL_ttf dependencies
-        run: bash vendored/SDL_ttf/external/download.sh
+        run: |
+          sed -i 's/\r$//' vendored/SDL_ttf/external/download.sh vendored/SDL_ttf/.gitmodules
+          bash vendored/SDL_ttf/external/download.sh
 
       - name: Build phosg and resource_dasm
         run: |
