@@ -17,6 +17,7 @@ short items(void) {
   char backvalue = 0;
   Boolean equip, play, ident;
   Rect r;
+  int enable_recomposite;
 
   SetMenuBar(copywright);
   DrawMenuBar();
@@ -155,7 +156,11 @@ short items(void) {
 
 backup:
 
-  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Keep the declaration at function scope; a declaration immediately after a
+   * label is rejected by the modern Clang C90-compatible compiler.
+   */
+  enable_recomposite = WindowManager_SetEnableRecomposite(0);
 
   SetPort(GetWindowPort(itemswindow));
   TextMode(0);

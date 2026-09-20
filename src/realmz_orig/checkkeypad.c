@@ -18,7 +18,7 @@ short checklayout(int32_t currentlevel) {
   /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
    * Pass the array as a short pointer; Clang rejects the pointer-to-array form.
    */
-  CvtLayoutToPc(layout);
+  CvtLayoutToPc(&layout[0][0]);
   fclose(fp);
 
   for (levely = 0; levely < 8; levely++) {
