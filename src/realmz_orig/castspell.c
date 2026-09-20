@@ -7,6 +7,7 @@ short castspell(void) {
   short type, smallclickdirection, keylevel[3], oldkeylevel[3], tempcaste;
   DialogRef describe = NIL;
   Boolean loop, nopower, try, oldred, def, shhh, skipdefault = 0;
+  int enable_recomposite;
 
   nopower = tier = oldred = def = try = keylevel[1] = keylevel[0] = oldkeylevel[1] = oldkeylevel[0] = 0;
 
@@ -64,7 +65,11 @@ selectagain:
   DrawDialog(spellwindow);
 wayback:
 
-  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Keep the declaration at function scope; a declaration immediately after a
+   * label is rejected by the modern Clang C90-compatible compiler.
+   */
+  enable_recomposite = WindowManager_SetEnableRecomposite(0);
 
   if ((incombat) || (!charnum)) {
     GetDialogItem(spellwindow, 45, &itemType, &itemHandle, &itemRect);
@@ -240,7 +245,7 @@ back:
         if (((itemHit == 39) || (itemHit == 40)) && (!incombat) && (charnum - killparty > 0)) {
           loop = def = TRUE;
 
-          int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+          enable_recomposite = WindowManager_SetEnableRecomposite(0);
 
           GetDialogItem(spellwindow, castlevel + 23, &itemType, &itemHandle, &buttonrect);
           upbutton(FALSE);

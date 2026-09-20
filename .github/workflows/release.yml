@@ -188,7 +188,10 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install --yes clang cmake ninja-build pkg-config zlib1g-dev
+          sudo apt-get install --yes \
+            clang cmake ninja-build pkg-config zlib1g-dev \
+            libx11-dev libxext-dev libxrandr-dev libxinerama-dev \
+            libxcursor-dev libxi-dev libxfixes-dev libxrender-dev
 
       - name: Cache native dependencies
         uses: actions/cache@v4

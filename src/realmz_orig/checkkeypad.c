@@ -15,7 +15,10 @@ short checklayout(int32_t currentlevel) {
   if ((fp = MyrFopen(filename, "rb")) == NULL)
     return (-2); /***** dont use layout **********/
   fread(&layout, sizeof layout, 1, fp);
-  CvtLayoutToPc(&layout);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Pass the array as a short pointer; Clang rejects the pointer-to-array form.
+   */
+  CvtLayoutToPc(layout);
   fclose(fp);
 
   for (levely = 0; levely < 8; levely++) {
