@@ -168,8 +168,8 @@ jobs:
           test -d "$mountpoint/Realmz.app/Contents/Resources/lib"
           find "$mountpoint/Realmz.app/Contents/Resources/lib" -type f -name 'libSDL3*.dylib' -print -quit | grep -q .
           /usr/libexec/PlistBuddy -c 'Print :NSHighResolutionCapable' "$mountpoint/Realmz.app/Contents/Info.plist" | grep -q true
-          lipo -verify_arch x86_64 "$mountpoint/Realmz.app/Contents/MacOS/Realmz"
-          lipo -verify_arch arm64 "$mountpoint/Realmz.app/Contents/MacOS/Realmz"
+          lipo "$mountpoint/Realmz.app/Contents/MacOS/Realmz" -verify_arch x86_64
+          lipo "$mountpoint/Realmz.app/Contents/MacOS/Realmz" -verify_arch arm64
           hdiutil detach "$mountpoint"
           mv "$dmg" "Realmz-$RELEASE_TAG-macOS.dmg"
 
