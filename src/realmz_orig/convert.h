@@ -62,9 +62,15 @@ static inline void CvtTabLongToPc(int32_t* x, unsigned int count) {
     CvtLongToPc(x++);
 }
 
-static inline void CvtTabShortToPc(int16_t* x, unsigned int count) {
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * The legacy converter is used with several packed arrays whose declared
+ * element types are not int16_t. Preserve its byte-level behavior while
+ * accepting those raw buffers under modern Clang type checking.
+ */
+static inline void CvtTabShortToPc(void* x, unsigned int count) {
+  int16_t* p = (int16_t*)x;
   while (count--)
-    CvtShortToPc(x++);
+    CvtShortToPc(p++);
 }
 
 static inline void CvtTabBoolToPc(Boolean* x, unsigned int count) {

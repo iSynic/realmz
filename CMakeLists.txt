@@ -405,7 +405,13 @@ if(APPLE)
     # be found. By default, LIBRARY artifacts will be installed to Resources/lib in the bundle,
     # so we set the RPATH below to this directory.
     install(IMPORTED_RUNTIME_ARTIFACTS Realmz RUNTIME_DEPENDENCY_SET runtimeDeps)
-    install(RUNTIME_DEPENDENCY_SET runtimeDeps LIBRARY)
+    install(RUNTIME_DEPENDENCY_SET runtimeDeps
+        LIBRARY
+        DIRECTORIES
+            "$<TARGET_FILE_DIR:SDL3-shared>"
+            "$<TARGET_FILE_DIR:SDL3_ttf-shared>"
+            "$<TARGET_FILE_DIR:SDL3_image-shared>"
+    )
 
     # Manually set the rpath to avoid CMake automatically adding hardcoded build machine paths
     set_target_properties(Realmz PROPERTIES
