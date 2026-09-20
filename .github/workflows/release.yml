@@ -46,8 +46,10 @@ jobs:
 
       - name: Download SDL_ttf dependencies
         run: |
-          sed -i 's/\r$//' vendored/SDL_ttf/external/download.sh vendored/SDL_ttf/.gitmodules
-          bash vendored/SDL_ttf/external/download.sh
+          if [ ! -f vendored/SDL_ttf/external/freetype/CMakeLists.txt ]; then
+            sed -i 's/\r$//' vendored/SDL_ttf/external/download.sh vendored/SDL_ttf/.gitmodules
+            bash vendored/SDL_ttf/external/download.sh
+          fi
 
       - name: Build phosg and resource_dasm
         run: |
@@ -142,7 +144,10 @@ jobs:
           fi
 
       - name: Download SDL_ttf dependencies
-        run: bash vendored/SDL_ttf/external/download.sh
+        run: |
+          if [ ! -f vendored/SDL_ttf/external/freetype/CMakeLists.txt ]; then
+            bash vendored/SDL_ttf/external/download.sh
+          fi
 
       - name: Build macOS package
         run: |
@@ -214,7 +219,10 @@ jobs:
           fi
 
       - name: Download SDL_ttf dependencies
-        run: bash vendored/SDL_ttf/external/download.sh
+        run: |
+          if [ ! -f vendored/SDL_ttf/external/freetype/CMakeLists.txt ]; then
+            bash vendored/SDL_ttf/external/download.sh
+          fi
 
       - name: Build and package Linux build
         run: |
