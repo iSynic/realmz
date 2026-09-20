@@ -57,30 +57,33 @@ static inline void CvtRectToPc(Rect* x) {
   rintel2moto(x);
 }
 
-static inline void CvtTabLongToPc(int32_t* x, unsigned int count) {
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * The legacy converter is called with both element pointers and pointers to
+ * whole arrays. Preserve its byte-level behavior while accepting those raw
+ * buffers under modern Clang type checking.
+ */
+static inline void CvtTabLongToPc(void* x, unsigned int count) {
+  int32_t* p = (int32_t*)x;
   while (count--)
-    CvtLongToPc(x++);
+    CvtLongToPc(p++);
 }
 
-/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
- * The legacy converter is used with several packed arrays whose declared
- * element types are not int16_t. Preserve its byte-level behavior while
- * accepting those raw buffers under modern Clang type checking.
- */
 static inline void CvtTabShortToPc(void* x, unsigned int count) {
   int16_t* p = (int16_t*)x;
   while (count--)
     CvtShortToPc(p++);
 }
 
-static inline void CvtTabBoolToPc(Boolean* x, unsigned int count) {
+static inline void CvtTabBoolToPc(void* x, unsigned int count) {
+  Boolean* p = (Boolean*)x;
   while (count--)
-    CvtBoolToPc(x++);
+    CvtBoolToPc(p++);
 }
 
-static inline void CvtTabRectToPc(Rect* x, unsigned int count) {
+static inline void CvtTabRectToPc(void* x, unsigned int count) {
+  Rect* p = (Rect*)x;
   while (count--)
-    rintel2moto(x++);
+    rintel2moto(p++);
 }
 
 // These structs are all shorts, and can be treated as an array.
@@ -114,37 +117,43 @@ void CvtShopToPc(struct shop* x);
 void CvtRestrictionInfoToPc(struct restrictinfo* x);
 void CvtPrefsToPc(PrefRecord* x);
 
-static inline void CvtTabItemAttrToPc(struct itemattr* x, unsigned int count) {
+static inline void CvtTabItemAttrToPc(void* x, unsigned int count) {
+  struct itemattr* p = (struct itemattr*)x;
   while (count--)
-    CvtItemAttrToPc(x++);
+    CvtItemAttrToPc(p++);
 }
 
-static inline void CvtTabItemToPc(struct item* x, unsigned int count) {
+static inline void CvtTabItemToPc(void* x, unsigned int count) {
+  struct item* p = (struct item*)x;
   // Inexplicably, this means a count of 30 items.
   count *= 30;
 
   while (count--)
-    CvtItemToPc(x++);
+    CvtItemToPc(p++);
 }
 
-static inline void CvtTabDoorToPc(struct door* x, unsigned int count) {
+static inline void CvtTabDoorToPc(void* x, unsigned int count) {
+  struct door* p = (struct door*)x;
   while (count--)
-    CvtDoorToPc(x++);
+    CvtDoorToPc(p++);
 }
 
-static inline void CvtTabMonsterToPc(struct monster* x, unsigned int count) {
+static inline void CvtTabMonsterToPc(void* x, unsigned int count) {
+  struct monster* p = (struct monster*)x;
   while (count--)
-    CvtMonsterToPc(x++);
+    CvtMonsterToPc(p++);
 }
 
-static inline void CvtTabCharacterToPc(struct character* x, unsigned int count) {
+static inline void CvtTabCharacterToPc(void* x, unsigned int count) {
+  struct character* p = (struct character*)x;
   while (count--)
-    CvtCharacterToPc(x++);
+    CvtCharacterToPc(p++);
 }
 
-static inline void CvtTabMapStatToPc(struct mapstats* x, unsigned int count) {
+static inline void CvtTabMapStatToPc(void* x, unsigned int count) {
+  struct mapstats* p = (struct mapstats*)x;
   while (count--)
-    CvtMapStatToPc(x++);
+    CvtMapStatToPc(p++);
 }
 
 /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
