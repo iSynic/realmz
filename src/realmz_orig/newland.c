@@ -1770,9 +1770,12 @@ startover:
               enc2.id[extracode[4]][tt] = infodoor.id[tt];
             }
             fseek(fp, extracode[1] * (sizeof enc + 320), SEEK_SET);
-            CvtEncount2ToPc(&enc);
+            /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+             * Convert the complex encounter record that was read from CE2.
+             */
+            CvtEncount2ToPc(&enc2);
             fwrite(&enc2, sizeof enc2, 1, fp);
-            CvtEncount2ToPc(&enc);
+            CvtEncount2ToPc(&enc2);
             fclose(fp);
             infodoor = tempdoor;
             break;

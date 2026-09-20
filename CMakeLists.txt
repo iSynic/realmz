@@ -415,7 +415,7 @@ if(APPLE)
         $<TARGET_FILE:SDL3_image-shared>
         $<TARGET_SONAME_FILE:SDL3_image-shared>
         $<TARGET_LINKER_FILE:SDL3_image-shared>
-        DESTINATION "Resources/lib"
+        DESTINATION "lib"
     )
 
     # Manually set the rpath to avoid CMake automatically adding hardcoded build machine paths
