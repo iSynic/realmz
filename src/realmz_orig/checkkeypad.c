@@ -15,7 +15,10 @@ short checklayout(int32_t currentlevel) {
   if ((fp = MyrFopen(filename, "rb")) == NULL)
     return (-2); /***** dont use layout **********/
   fread(&layout, sizeof layout, 1, fp);
-  CvtLayoutToPc(&layout);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Pass the first element with the converter's declared pointer type.
+   */
+  CvtLayoutToPc(&layout[0][0]);
   fclose(fp);
 
   for (levely = 0; levely < 8; levely++) {

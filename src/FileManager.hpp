@@ -19,6 +19,7 @@
 #include <vector>
 
 std::string host_filename_for_mac_filename(const std::string& mac_path, bool implicitly_local);
+std::string userdata_filename_for_mac_filename(const std::string& mac_path, bool implicitly_local = false);
 std::string host_filename_for_FSSpec(const FSSpec* fsp);
 
 std::vector<std::string> mac_list_directory(const std::string& mac_path);

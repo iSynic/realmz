@@ -1,4 +1,4 @@
-#include "FileManager.h"
+#include "FileManager.hpp"
 
 #include <SDL3/SDL_storage.h>
 #include <algorithm>
@@ -36,7 +36,7 @@ std::string normalize_mac_path(const std::string& mac_path, bool implicitly_loca
   return ret;
 }
 
-std::string userdata_filename_for_mac_filename(const std::string& mac_path, bool implicitly_local = false) {
+std::string userdata_filename_for_mac_filename(const std::string& mac_path, bool implicitly_local) {
   return user_basepath + normalize_mac_path(mac_path, implicitly_local);
 }
 

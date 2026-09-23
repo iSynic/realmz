@@ -391,7 +391,32 @@ void FSpCreateResFile(const FSSpec* spec, OSType creator, OSType fileType, Scrip
 int16_t FSpOpenResFile(const FSSpec* spec, SInt8 permission) {
   std::string host_filename;
   try {
+#ifdef __linux__
+    // Legacy code opens bundled resources read-write and updates some of them
+    // during startup. Keep the package immutable by using a private copy.
+    if (spec->parID == 0) {
+      auto user_base = userdata_filename_for_mac_filename(string_for_pstr<64>(spec->name));
+      auto user_filename = host_resource_filename_for_host_filename(user_base);
+      if (!user_filename.empty()) {
+        host_filename = user_filename;
+      } else {
+        host_filename = host_resource_filename_for_FSSpec(spec);
+        bool writable = (permission == fsCurPerm) || (permission > fsRdPerm);
+        if (writable && !host_filename.empty()) {
+          auto copy_name = user_base + std::filesystem::path(host_filename).extension().string();
+          std::error_code error;
+          std::filesystem::create_directories(std::filesystem::path(copy_name).parent_path(), error);
+          if (!error) std::filesystem::copy_file(host_filename, copy_name, std::filesystem::copy_options::none, error);
+          if (error) throw std::runtime_error(std::format("Could not copy resource file to user data: {}", error.message()));
+          host_filename = copy_name;
+        }
+      }
+    } else {
+      host_filename = host_resource_filename_for_FSSpec(spec);
+    }
+#else
     host_filename = host_resource_filename_for_FSSpec(spec);
+#endif
     if (host_filename.empty()) {
       auto filename = string_for_pstr<64>(spec->name);
       rm_log.info_f("Failed to load resource file {}", filename);

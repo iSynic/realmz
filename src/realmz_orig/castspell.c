@@ -7,6 +7,10 @@ short castspell(void) {
   short type, smallclickdirection, keylevel[3], oldkeylevel[3], tempcaste;
   DialogRef describe = NIL;
   Boolean loop, nopower, try, oldred, def, shhh, skipdefault = 0;
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Keep this declaration before the wayback label for C90 compilers.
+   */
+  int enable_recomposite;
 
   nopower = tier = oldred = def = try = keylevel[1] = keylevel[0] = oldkeylevel[1] = oldkeylevel[0] = 0;
 
@@ -64,7 +68,7 @@ selectagain:
   DrawDialog(spellwindow);
 wayback:
 
-  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+  enable_recomposite = WindowManager_SetEnableRecomposite(0);
 
   if ((incombat) || (!charnum)) {
     GetDialogItem(spellwindow, 45, &itemType, &itemHandle, &itemRect);

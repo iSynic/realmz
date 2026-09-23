@@ -8,6 +8,7 @@ tar -xzf "$archive" -C "$audit_dir"
 package_root=$(find "$audit_dir" -mindepth 1 -maxdepth 1 -type d -print -quit)
 test -n "$package_root"
 game_dir="$package_root/bin"
+export XDG_DATA_HOME="$audit_dir/user-data"
 test -x "$game_dir/Realmz"
 test -f "$game_dir/realmz.rsrc"
 test -f "$game_dir/realmz.png"
@@ -53,6 +54,9 @@ for binary in "$game_dir/Realmz" "$game_dir"/*.so*; do
   fi
 done
 
+chmod -R a-w "$game_dir"
+trap 'chmod -R u+w "$game_dir"; rm -rf -- "$audit_dir"' EXIT
+
 # A real display server is required here; SDL's dummy video driver does not
 # exercise window creation, popup support or font rendering.
 run_smoke() {
@@ -84,7 +88,7 @@ chmod 700 "$audit_dir/runtime"
 XDG_RUNTIME_DIR="$audit_dir/runtime" weston --backend=headless-backend.so --socket=realmz-test \
   --idle-time=0 >"$audit_dir/weston.log" 2>&1 &
 weston_pid=$!
-trap 'kill "$weston_pid" 2>/dev/null || true; rm -rf -- "$audit_dir"' EXIT
+trap 'kill "$weston_pid" 2>/dev/null || true; chmod -R u+w "$game_dir"; rm -rf -- "$audit_dir"' EXIT
 for i in $(seq 1 50); do
   if [ -S "$audit_dir/runtime/realmz-test" ]; then break; fi
   sleep 0.1
