@@ -200,14 +200,17 @@ void CvtDoorToPc(struct door* x) {
 
 void CvtMapsToPc(struct maps* x) {
   // This is all shorts except for the big Str255 at the end.
-  CvtTabShortToPc(x, (sizeof(*x) - 256) / 2);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Convert the short fields through the converter's declared pointer type.
+   */
+  CvtTabShortToPc((int16_t*)x, (sizeof(*x) - 256) / 2);
 }
 
 void CvtThiefToPc(struct thief* x) {
   CvtTabBoolToPc(x->type, 10);
-  CvtTabShortToPc(x->modifer, 8);
-  CvtTabShortToPc(x->codes, 8);
-  CvtTabShortToPc(x->codef, 8);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * These are byte arrays, so they have no endianness to convert.
+   */
   CvtTabShortToPc(x->texts, 8);
   CvtTabShortToPc(x->textf, 8);
   CvtTabShortToPc(x->sounds, 8);

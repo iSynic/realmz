@@ -17,6 +17,10 @@ short items(void) {
   char backvalue = 0;
   Boolean equip, play, ident;
   Rect r;
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Keep this declaration before the backup label for C90 compilers.
+   */
+  int enable_recomposite;
 
   SetMenuBar(copywright);
   DrawMenuBar();
@@ -155,7 +159,7 @@ short items(void) {
 
 backup:
 
-  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+  enable_recomposite = WindowManager_SetEnableRecomposite(0);
 
   SetPort(GetWindowPort(itemswindow));
   TextMode(0);

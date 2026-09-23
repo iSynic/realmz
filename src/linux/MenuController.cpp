@@ -18,7 +18,7 @@
 #include "../EventManager.h"
 
 namespace {
-constexpr int kRowHeight = 24;
+constexpr int kRowHeight = kLinuxMenuRowHeight;
 constexpr int kSidePadding = 14;
 constexpr int kMaxPopupWidth = 380;
 static phosg::PrefixedLogger log("[LinuxMenu] ");
@@ -32,6 +32,7 @@ struct Popup {
   int visible_rows = 0;
   int width = 0;
   bool port = false;
+  bool port_root = false;
 };
 
 class Controller {
@@ -65,23 +66,23 @@ public:
     int x = 8;
     int index = 0;
     for (const auto& menu : list->menus) {
-      int width = text_width(menu->title) + 20;
+      int width = text_width(menu->title) + 16;
       if (index == active_bar) {
         SDL_FRect active{static_cast<float>(x), 2, static_cast<float>(width), kLinuxMenuHeight - 4};
         SDL_SetRenderDrawColor(renderer, 62, 91, 146, 255);
         SDL_RenderFillRect(renderer, &active);
       }
-      render_text(renderer, menu->title, x + 10, 4, index == active_bar, !menu->enabled);
+      render_text(renderer, menu->title, x + 8, 3, index == active_bar, !menu->enabled);
       x += width;
       ++index;
     }
-    int width = text_width("Port") + 20;
+    int width = text_width("Port") + 16;
     if (active_bar == index) {
       SDL_FRect active{static_cast<float>(x), 2, static_cast<float>(width), kLinuxMenuHeight - 4};
       SDL_SetRenderDrawColor(renderer, 62, 91, 146, 255);
       SDL_RenderFillRect(renderer, &active);
     }
-    render_text(renderer, "Port", x + 10, 4, active_bar == index, false);
+    render_text(renderer, "Port", x + 8, 3, active_bar == index, false);
   }
 
   void cancel() { close(true); }
@@ -116,7 +117,14 @@ public:
       return tracking() && id != main_id;
     }
     if ((e.type == SDL_EVENT_WINDOW_HIDDEN || e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) && tracking()) {
-      for (auto& p : popups) if (id == SDL_GetWindowID(p.window)) { finish(0, 0); return true; }
+      for (auto& p : popups) if (id == SDL_GetWindowID(p.window)) {
+        // SDL_CreateRenderer may briefly reconfigure a just-created popup. Its
+        // queued HIDDEN event is stale if the popup has already been shown again.
+        if (e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED || (SDL_GetWindowFlags(p.window) & SDL_WINDOW_HIDDEN)) {
+          finish(0, 0);
+        }
+        return true;
+      }
     }
     if (e.type == SDL_EVENT_WINDOW_FOCUS_LOST && tracking()) {
       SDL_Window* focus = SDL_GetKeyboardFocus();
@@ -214,8 +222,8 @@ private:
 
   TTF_Font* get_font() {
     if (!font) {
-      auto path = std::string(SDL_GetBasePath()) + "ChicagoFLF.ttf";
-      font = TTF_OpenFont(path.c_str(), 16);
+      auto path = std::string(SDL_GetBasePath()) + "InterVariable.ttf";
+      font = TTF_OpenFont(path.c_str(), 12);
       if (!font) log.error_f("Menu font: {}", SDL_GetError());
     }
     return font;
@@ -310,11 +318,11 @@ private:
     if (!list) return;
     int left = 8, index = 0;
     for (const auto& menu : list->menus) {
-      int width = text_width(menu->title) + 20;
+      int width = text_width(menu->title) + 16;
       if (x >= left && x < left + width) { open_bar(index); return; }
       left += width; ++index;
     }
-    if (x >= left && x < left + text_width("Port") + 20) open_bar(index);
+    if (x >= left && x < left + text_width("Port") + 16) open_bar(index);
   }
 
   void open_bar(int index) {
@@ -326,7 +334,7 @@ private:
     std::shared_ptr<Menu> target;
     for (const auto& menu : list->menus) {
       if (i++ == index) { target = menu; break; }
-      x += text_width(menu->title) + 20;
+      x += text_width(menu->title) + 16;
     }
     bool is_port = index == bar_count() - 1;
     if (is_port) target = port_menu();
@@ -356,7 +364,7 @@ private:
       SDL_DestroyWindow(window);
       return false;
     }
-    popups.push_back(Popup{menu, window, renderer, -1, 0, rows, width, port});
+    popups.push_back(Popup{menu, window, renderer, -1, 0, rows, width, port, port && popups.empty()});
     draw_popup(popups.back());
     return true;
   }
@@ -403,7 +411,8 @@ private:
         } catch (const std::exception&) { }
       }
       render_text(r, item.name, 49, y + 3, selected, !item.enabled, false, item.style_flags);
-      bool child = popup.port ? (i == 0 || i == 1 || i == 4) : item.key_equivalent == 0x1B && item.mark_character;
+      bool child = popup.port ? (popup.port_root && (i == 0 || i == 1 || i == 4)) :
+          item.key_equivalent == 0x1B && item.mark_character;
       if (child) render_text(r, ">", popup.width - 20, y + 3, selected, !item.enabled);
       else if (item.key_equivalent && item.key_equivalent != 0x1B) {
         std::string key = "Ctrl+";
@@ -417,7 +426,7 @@ private:
   std::shared_ptr<Menu> submenu_for(const Popup& popup, int row) {
     if (row < 0 || row >= static_cast<int>(popup.menu->items.size())) return nullptr;
     const auto& item = popup.menu->items[row];
-    if (popup.port) return (row == 0 || row == 1 || row == 4) ? port_submenu(row) : nullptr;
+    if (popup.port) return (popup.port_root && (row == 0 || row == 1 || row == 4)) ? port_submenu(row) : nullptr;
     if (item.key_equivalent != 0x1B || !item.mark_character || !list) return nullptr;
     for (const auto& menu : list->submenus)
       if (menu->menu_id == static_cast<unsigned char>(item.mark_character)) return menu;
@@ -429,7 +438,7 @@ private:
     if (depth < 0 || depth >= static_cast<int>(popups.size())) return;
     auto& popup = popups[depth];
     if (row < 0 || row >= static_cast<int>(popup.menu->items.size()) || !popup.menu->items[row].enabled || popup.menu->items[row].name == "-") row = -1;
-    if (popup.selected == row && static_cast<int>(popups.size()) == depth + 1) return;
+    if (popup.selected == row) return;
     while (static_cast<int>(popups.size()) > depth + 1) { SDL_DestroyWindow(popups.back().window); popups.pop_back(); }
     popup.selected = row;
     draw_popup(popup);

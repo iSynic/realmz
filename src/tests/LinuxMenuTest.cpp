@@ -116,6 +116,13 @@ int main() {
   assert(LinuxMenuIsTracking());
   auto* popup = popup_window(main);
   assert(popup);
+  SDL_Event initial_event{};
+  while (SDL_PollEvent(&initial_event)) {
+    LinuxMenuHandleEvent(initial_event);
+  }
+  // Renderer initialization can queue a transient HIDDEN/SHOWN pair for the
+  // popup. Processing that real SDL queue must not dismiss a visible menu.
+  assert(LinuxMenuIsTracking());
   if (const char* capture = std::getenv("REALMZ_MENU_CAPTURE")) {
     SDL_Surface* shot = SDL_RenderReadPixels(SDL_GetRenderer(popup), nullptr);
     assert(shot);
@@ -126,7 +133,7 @@ int main() {
   click.type = SDL_EVENT_MOUSE_BUTTON_UP;
   click.button.windowID = SDL_GetWindowID(popup);
   click.button.button = SDL_BUTTON_LEFT;
-  click.button.y = 30;
+  click.button.y = kLinuxMenuRowHeight + 5;
   assert(LinuxMenuHandleEvent(click));
   assert(calls == 0); // disabled item
   click.button.y = 5;
@@ -149,7 +156,7 @@ int main() {
   popup = popup_window(main);
   assert(popup);
   click.button.windowID = SDL_GetWindowID(popup);
-  click.button.y = 4 * 24 + 5;
+  click.button.y = 4 * kLinuxMenuRowHeight + 5;
   assert(LinuxMenuHandleEvent(click));
   assert(calls == 2 && LinuxMenuIsTracking()); // missing submenu cannot select
   MCSync(list, selected);
@@ -166,20 +173,62 @@ int main() {
   bar_click.button.y = 10;
   assert(LinuxMenuHandleEvent(bar_click));
   assert(LinuxMenuIsTracking());
+  while (SDL_PollEvent(&initial_event)) LinuxMenuHandleEvent(initial_event);
+  assert(LinuxMenuIsTracking());
+  SDL_Event release = bar_click;
+  release.type = SDL_EVENT_MOUSE_BUTTON_UP;
+  assert(LinuxMenuHandleEvent(release));
+  assert(LinuxMenuIsTracking()); // click and click-hold both keep the dropdown open
   popup = popup_window(main);
   assert(popup);
   SDL_Event hover{};
   hover.type = SDL_EVENT_MOUSE_MOTION;
   hover.motion.windowID = SDL_GetWindowID(popup);
   hover.motion.x = 70;
-  hover.motion.y = 3 * 24 + 4;
+  hover.motion.y = 3 * kLinuxMenuRowHeight + 4;
   assert(LinuxMenuHandleEvent(hover));
   auto* submenu_window = child_popup(popup);
   assert(submenu_window && submenu_window != popup);
+  SDL_WindowID submenu_id = SDL_GetWindowID(submenu_window);
+  assert(LinuxMenuHandleEvent(hover));
+  assert(child_popup(popup) && SDL_GetWindowID(child_popup(popup)) == submenu_id);
+  while (SDL_PollEvent(&initial_event)) {
+    LinuxMenuHandleEvent(initial_event);
+  }
+  assert(LinuxMenuIsTracking());
+  assert(SDL_GetWindowFromID(submenu_id));
   click.button.windowID = SDL_GetWindowID(submenu_window);
   click.button.y = 5;
   assert(LinuxMenuHandleEvent(click));
   assert(calls == 4 && selected_menu == 132 && selected_item == 1);
+  assert(!LinuxMenuIsTracking());
+
+  SDL_Event key{};
+  key.type = SDL_EVENT_KEY_DOWN;
+  key.key.windowID = SDL_GetWindowID(main);
+  key.key.key = SDLK_F10;
+  assert(LinuxMenuHandleEvent(key));
+  assert(LinuxMenuIsTracking());
+  popup = popup_window(main);
+  assert(popup);
+  key.key.windowID = SDL_GetWindowID(popup);
+  key.key.key = SDLK_RIGHT;
+  assert(LinuxMenuHandleEvent(key)); // move from Game to Port
+  popup = popup_window(main);
+  assert(popup);
+  hover.motion.windowID = SDL_GetWindowID(popup);
+  hover.motion.y = kLinuxMenuRowHeight + 4; // Scale
+  assert(LinuxMenuHandleEvent(hover));
+  submenu_window = child_popup(popup);
+  assert(submenu_window);
+  hover.motion.windowID = SDL_GetWindowID(submenu_window);
+  hover.motion.y = 4; // 1x (Default) is a leaf, not another Port submenu
+  assert(LinuxMenuHandleEvent(hover));
+  assert(child_popup(submenu_window) == nullptr);
+  assert(LinuxMenuIsTracking());
+  click.button.windowID = SDL_GetWindowID(submenu_window);
+  click.button.y = 4;
+  assert(LinuxMenuHandleEvent(click));
   assert(!LinuxMenuIsTracking());
   return 0;
 }

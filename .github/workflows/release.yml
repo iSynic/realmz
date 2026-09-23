@@ -197,7 +197,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes \
             clang-21 lld-21 libc++-21-dev libc++abi-21-dev libunwind-21-dev \
-            ninja-build python3-pip pkg-config zlib1g-dev binutils file patchelf desktop-file-utils \
+            ninja-build python3-pip pkg-config zlib1g-dev binutils file patchelf gdb desktop-file-utils \
             xvfb weston libwayland-dev wayland-protocols libxkbcommon-dev libdecor-0-dev \
             libasound2-dev libpulse-dev libegl-dev \
             libx11-dev libxext-dev libxrandr-dev libxinerama-dev \
@@ -264,7 +264,11 @@ jobs:
             grep -q "#define $driver 1" "$build_config"
           done
           cmake --build build-linux --target Realmz LinuxMenuTest LinuxStorageTest --parallel
-          SDL_VIDEODRIVER=x11 xvfb-run -a ctest --test-dir build-linux --output-on-failure
+          if ! SDL_VIDEODRIVER=x11 xvfb-run -a ctest --test-dir build-linux --output-on-failure; then
+            SDL_VIDEODRIVER=x11 xvfb-run -a gdb --batch --quiet \
+              -ex run -ex 'thread apply all bt' --args build-linux/LinuxMenuTest
+            exit 1
+          fi
           runtime="$RUNNER_TEMP/realmz-xdg"
           install -d -m 700 "$runtime"
           XDG_RUNTIME_DIR="$runtime" weston --backend=headless-backend.so \
