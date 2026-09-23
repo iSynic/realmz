@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "PortMenu.hpp"
+#include "PortPrefs.hpp"
 #include "QuickDraw.hpp"
 #include "SDLHelpers.hpp"
 
@@ -111,6 +112,7 @@ private:
   SDL_ScaleMode scale_mode = SDL_SCALEMODE_PIXELART;
   bool aspect_locked = true;
   int gamma_idx = 0;
+  UiLayout pending_ui_layout = UiLayout::Expanded;
   int windowed_w = kLogicalWindowWidth;
   int windowed_h = kLogicalWindowHeight;
   int windowed_x = SDL_WINDOWPOS_CENTERED;
@@ -128,6 +130,9 @@ public:
   static WindowManager& instance();
   ~WindowManager();
   void create_sdl_window();
+  void create_sdl_window(const PortPrefs& prefs);
+  UiLayout get_pending_ui_layout() const { return this->pending_ui_layout; }
+  void set_pending_ui_layout(UiLayout layout);
   WindowPtr create_window(
       const std::string& title,
       const Rect& bounds,

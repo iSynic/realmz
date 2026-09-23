@@ -1968,14 +1968,17 @@ void updatemain(short center, short who) {
       } else {
         mainrect.top = 321 + downshift;
         mainrect.left = 0;
-        mainrect.bottom = 460 + 96;
+        mainrect.bottom = 460 + downshift;
         mainrect.right = 308;
         pict(203, mainrect);
       }
 
       mainrect.top = 321 + downshift;
-      mainrect.left = 308 + leftshift;
-      mainrect.bottom = 460 + 96;
+      /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+       * The 7.1.2 PICT 176 contains the entire 640-pixel lower panel.
+       */
+      mainrect.left = screensize ? 308 + leftshift : 0;
+      mainrect.bottom = 460 + downshift;
       mainrect.right = 640 + leftshift;
       DrawPicture(mainpict, &mainrect);
 
@@ -2508,16 +2511,19 @@ void updateshopwings(int cl, int cr) {
   MoveTo(42, 426);
   string(character[0].loadmax);
 
-  itemRect.left = 720;
-  itemRect.right = 800;
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Keep the second character's item summary inside the active layout.
+   */
+  itemRect.left = 560 + leftshift;
+  itemRect.right = 640 + leftshift;
   pict(217, itemRect);
 
   if (cr != -1) {
-    MoveTo(768, 446);
+    MoveTo(608 + leftshift, 446);
     string(character[1].numitems);
-    MoveTo(730, 426);
+    MoveTo(570 + leftshift, 426);
     string(character[1].load);
-    MoveTo(762, 426);
+    MoveTo(602 + leftshift, 426);
     string(character[1].loadmax);
   }
 

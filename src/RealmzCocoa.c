@@ -13,6 +13,8 @@
 #include "SoundManager.h"
 #include "WindowManager.h"
 
+extern short screensize;
+
 GDevice gDevice;
 GDPtr gDevicePtr;
 PrefRecord prefs;
@@ -56,8 +58,8 @@ GDHandle GetGDevice(void) {
 GDHandle GetMainDevice(void) {
   gDevice.gdRect.top = 0;
   gDevice.gdRect.left = 0;
-  gDevice.gdRect.right = 800;
-  gDevice.gdRect.bottom = 600;
+  gDevice.gdRect.right = screensize ? 800 : 640;
+  gDevice.gdRect.bottom = screensize ? 600 : 480;
 
   gdPixMap.bounds = gDevice.gdRect;
   gdPixMap.pixelSize = 32;

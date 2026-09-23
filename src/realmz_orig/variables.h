@@ -42,7 +42,14 @@ extern Boolean musicplaying;
 #define PREF_STR_INDEX 3
 #define PREF_RES_ID 128
 
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * The modern port selects the legacy small-screen geometry at startup.
+ */
+#if defined(REALMZ_COCOA)
+extern short screensize;
+#else
 #define screensize 1
+#endif
 
 extern Rect AHEAD_RECT, BACK_RECT, TURN_LEFT_RECT, TURN_RIGHT_RECT;
 

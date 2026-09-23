@@ -17,11 +17,12 @@
 #include "Types.hpp"
 
 static phosg::PrefixedLogger prefs_log("[PortPrefs] ", DEFAULT_LOG_LEVEL);
+static UiLayout current_layout = UiLayout::Expanded;
 
-static constexpr int MIN_W = kLogicalWindowWidth;
-static constexpr int MIN_H = kLogicalWindowHeight;
-static constexpr int MAX_W = kLogicalWindowWidth * 4;
-static constexpr int MAX_H = kLogicalWindowHeight * 4;
+UiLayout active_ui_layout() { return current_layout; }
+void set_active_ui_layout(UiLayout layout) { current_layout = layout; }
+int ui_layout_width() { return current_layout == UiLayout::Classic ? 640 : 800; }
+int ui_layout_height() { return current_layout == UiLayout::Classic ? 480 : 600; }
 
 static std::string prefs_path() {
   char* base = SDL_GetPrefPath("Fantasoft", "Realmz");
@@ -72,9 +73,11 @@ static int gamma_idx_for_value(double value) {
 }
 
 PortPrefs load_port_prefs() {
-  PortPrefs prefs;
+  return load_port_prefs(prefs_path());
+}
 
-  std::string path = prefs_path();
+PortPrefs load_port_prefs(const std::string& path) {
+  PortPrefs prefs;
   if (path.empty()) {
     prefs_log.warning_f("Could not get pref path: {}; using defaults", SDL_GetError());
     return prefs;
@@ -90,8 +93,12 @@ PortPrefs load_port_prefs() {
 
   try {
     auto root = phosg::JSON::parse(data);
-    prefs.window_w = std::clamp(static_cast<int>(root.get_int("window_w", prefs.window_w)), MIN_W, MAX_W);
-    prefs.window_h = std::clamp(static_cast<int>(root.get_int("window_h", prefs.window_h)), MIN_H, MAX_H);
+    prefs.ui_layout = root.get_string("ui_layout", "expanded_800x600") == "classic_640x480"
+        ? UiLayout::Classic : UiLayout::Expanded;
+    int base_w = prefs.ui_layout == UiLayout::Classic ? 640 : 800;
+    int base_h = prefs.ui_layout == UiLayout::Classic ? 480 : 600;
+    prefs.window_w = std::clamp(static_cast<int>(root.get_int("window_w", base_w)), base_w, base_w * 4);
+    prefs.window_h = std::clamp(static_cast<int>(root.get_int("window_h", base_h)), base_h, base_h * 4);
     prefs.window_x = static_cast<int>(root.get_int("window_x", prefs.window_x));
     prefs.window_y = static_cast<int>(root.get_int("window_y", prefs.window_y));
     prefs.scale_mode = scale_mode_for_name(root.get_string("filter", name_for_scale_mode(prefs.scale_mode)));
@@ -107,7 +114,10 @@ PortPrefs load_port_prefs() {
 }
 
 void save_port_prefs(const PortPrefs& prefs) {
-  std::string path = prefs_path();
+  save_port_prefs(prefs, prefs_path());
+}
+
+void save_port_prefs(const PortPrefs& prefs, const std::string& path) {
   if (path.empty()) {
     prefs_log.warning_f("Could not get pref path: {}; not saving prefs", SDL_GetError());
     return;
@@ -124,13 +134,14 @@ void save_port_prefs(const PortPrefs& prefs) {
   root.emplace("filter", name_for_scale_mode(prefs.scale_mode));
   root.emplace("aspect_locked", prefs.aspect_locked);
   root.emplace("gamma", gamma_value_for_idx(prefs.gamma_idx));
+  root.emplace("ui_layout", prefs.ui_layout == UiLayout::Classic ? "classic_640x480" : "expanded_800x600");
 
   std::string tmp_path = path + ".tmp";
   try {
     phosg::save_file(tmp_path, root.serialize());
-    if (std::rename(tmp_path.c_str(), path.c_str()) != 0) {
+    if (!SDL_RenamePath(tmp_path.c_str(), path.c_str())) {
       std::remove(tmp_path.c_str());
-      prefs_log.warning_f("Could not rename {} to {}", tmp_path, path);
+      prefs_log.warning_f("Could not rename {} to {}: {}", tmp_path, path, SDL_GetError());
     }
   } catch (const std::exception& e) {
     std::remove(tmp_path.c_str());

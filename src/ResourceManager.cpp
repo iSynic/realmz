@@ -1,13 +1,20 @@
 #include <algorithm>
+#include <cstring>
 #include <deque>
 #include <filesystem>
 #include <memory>
 #include <stddef.h>
 #include <stdexcept>
 #include <string>
+#include <utility>
+
+#include <SDL3/SDL_filesystem.h>
+#include <SDL3/SDL_messagebox.h>
+#include <SDL3/SDL_video.h>
 
 #include "FileManager.hpp"
 #include "MemoryManager.hpp"
+#include "PortPrefs.hpp"
 #include "ResourceManager.h"
 #include "StringConvert.hpp"
 #include "structs.h"
@@ -24,6 +31,54 @@
 
 static int16_t resError = noErr;
 static phosg::PrefixedLogger rm_log("[ResourceManager] ");
+
+static const std::pair<uint32_t, int16_t> classic_ui_ids[] = {
+    {0x57494E44, 128}, {0x57494E44, 129}, {0x57494E44, 130}, {0x57494E44, 131}, {0x57494E44, 132},
+    {0x444C4F47, 137}, {0x444C4F47, 138}, {0x444C4F47, 144}, {0x444C4F47, 156}, {0x444C4F47, 166}, {0x444C4F47, 300},
+    {0x4449544C, 130}, {0x4449544C, 135}, {0x4449544C, 137}, {0x4449544C, 138}, {0x4449544C, 140},
+    {0x4449544C, 145}, {0x4449544C, 164}, {0x4449544C, 166}, {0x4449544C, 167}, {0x4449544C, 300},
+    {0x50494354, 176}, {0x50494354, 187}, {0x50494354, 300}, {0x50494354, 303}, {0x50494354, 304},
+    {0x77637462, 128},
+    {0x64637462, 137}, {0x64637462, 138}, {0x64637462, 144}, {0x64637462, 145}, {0x64637462, 156}, {0x64637462, 166},
+};
+
+static bool is_family_jewels(const std::string& path) {
+  auto file = std::filesystem::path(path);
+  return file.filename() == "The Family Jewels.rsrc" && file.parent_path().filename() == "Data Files";
+}
+
+static void report_classic_ui_error(const std::string& message) {
+  rm_log.error_f("{}", message);
+  const char* driver = SDL_GetCurrentVideoDriver();
+  if (driver && std::strcmp(driver, "dummy")) {
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Realmz classic interface", message.c_str(), nullptr);
+  }
+}
+
+static void apply_classic_ui_resources(ResourceDASM::ResourceFile& family) {
+  auto base_path = SDL_GetBasePath();
+  if (!base_path) {
+    throw std::runtime_error("Classic UI: cannot locate the application resources");
+  }
+  auto path = std::filesystem::path(base_path) / "classic-ui.rsrc";
+  auto data = phosg::load_file(path.string());
+  auto overlay = ResourceDASM::parse_resource_fork(data);
+  for (const auto& [kind, id] : classic_ui_ids) {
+    bool old_only = kind == 0x64637462 && id == 145;
+    if (!overlay.resource_exists(kind, id) || (!family.resource_exists(kind, id) && !old_only)) {
+      throw std::runtime_error(std::format("Classic UI: required resource {:08X}:{} is missing", kind, id));
+    }
+  }
+  for (const auto& [kind, id] : classic_ui_ids) {
+    auto resource = overlay.get_resource(kind, id);
+    if (family.resource_exists(kind, id)) {
+      family.remove(kind, id);
+    }
+    family.add(std::make_shared<ResourceDASM::ResourceFile::Resource>(
+        resource->type, resource->id, resource->flags, resource->name, resource->data));
+  }
+  rm_log.info_f("Applied 7.1.2 UI resources from {}", path.string());
+}
 
 class ResourceManager {
 public:
@@ -53,6 +108,7 @@ public:
     State state;
     int16_t refnum = 0;
     std::shared_ptr<ResourceDASM::ResourceFile> rf;
+    std::shared_ptr<ResourceDASM::ResourceFile> unpatched_rf;
 
     std::unordered_map<uint64_t, std::shared_ptr<Resource>> resource_for_type_id;
     std::unordered_map<Handle, std::shared_ptr<Resource>> resource_for_handle;
@@ -188,7 +244,21 @@ public:
           it.second->data_modified = false;
         }
       }
-      phosg::save_file(this->host_filename, ResourceDASM::serialize_resource_fork(*this->rf));
+      ResourceDASM::ResourceFile persisted = *this->rf;
+      if (this->unpatched_rf) {
+        // Classic UI replacements are display assets, never changes to the user's Family Jewels file.
+        for (const auto& [kind, id] : classic_ui_ids) {
+          if (persisted.resource_exists(kind, id)) {
+            persisted.remove(kind, id);
+          }
+          if (this->unpatched_rf->resource_exists(kind, id)) {
+            auto original = this->unpatched_rf->get_resource(kind, id);
+            persisted.add(make_shared<ResourceDASM::ResourceFile::Resource>(
+                original->type, original->id, original->flags, original->name, original->data));
+          }
+        }
+      }
+      phosg::save_file(this->host_filename, ResourceDASM::serialize_resource_fork(persisted));
       this->state = State::NOT_MODIFIED;
     }
   };
@@ -210,12 +280,14 @@ public:
   int16_t use(
       const std::string& host_filename,
       std::shared_ptr<ResourceDASM::ResourceFile> rf,
-      bool writable) {
+      bool writable,
+      std::shared_ptr<ResourceDASM::ResourceFile> unpatched_rf = nullptr) {
     auto file = std::make_shared<File>();
     file->host_filename = host_filename;
     file->refnum = this->next_refnum++;
     file->state = writable ? File::State::NOT_MODIFIED : File::State::READ_ONLY;
     file->rf = rf;
+    file->unpatched_rf = unpatched_rf;
     this->files.insert(this->files.begin(), file);
     return file->refnum;
   }
@@ -414,8 +486,13 @@ int16_t FSpOpenResFile(const FSSpec* spec, SInt8 permission) {
     if (!rf) {
       rf = std::make_shared<ResourceDASM::ResourceFile>(ResourceDASM::parse_resource_fork(data));
     }
+    std::shared_ptr<ResourceDASM::ResourceFile> unpatched_rf;
+    if (active_ui_layout() == UiLayout::Classic && is_family_jewels(host_filename)) {
+      unpatched_rf = std::make_shared<ResourceDASM::ResourceFile>(*rf);
+      apply_classic_ui_resources(*rf);
+    }
     bool writable = (permission == fsCurPerm) || (permission > fsRdPerm);
-    int16_t ret = rm.use(host_filename, rf, writable);
+    int16_t ret = rm.use(host_filename, rf, writable, unpatched_rf);
     rm_log.info_f("Loaded {} with reference number {} ({} with permission {})",
         host_filename.c_str(), ret, writable ? "writable" : "read-only", permission);
     rm.print_chain();
@@ -423,10 +500,20 @@ int16_t FSpOpenResFile(const FSSpec* spec, SInt8 permission) {
     return ret;
 
   } catch (const phosg::cannot_open_file&) {
+    if (active_ui_layout() == UiLayout::Classic && is_family_jewels(host_filename)) {
+      std::string message = "Classic UI resource setup failed: The Family Jewels or classic-ui.rsrc is missing";
+      report_classic_ui_error(message);
+      throw std::runtime_error(message);
+    }
     rm_log.info_f("Failed to load resource file {}", host_filename.c_str());
     resError = fnfErr;
     return -1;
   } catch (const std::exception& e) {
+    if (active_ui_layout() == UiLayout::Classic && is_family_jewels(host_filename)) {
+      std::string message = std::format("Classic UI resource setup failed: {}", e.what());
+      report_classic_ui_error(message);
+      throw std::runtime_error(message);
+    }
     rm_log.info_f("Failed to parse resource file {}: {}", host_filename.c_str(), e.what());
     resError = resFNotFound;
     return -1;

@@ -189,6 +189,19 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
   }
   [portMenu setSubmenu:gammaMenu forItem:gammaItem];
 
+  NSMenuItem* interfaceItem = [[NSMenuItem alloc] initWithTitle:@"Interface (restart required)" action:NULL keyEquivalent:@""];
+  [portMenu addItem:interfaceItem];
+  NSMenu* interfaceMenu = [[NSMenu alloc] initWithTitle:@"Interface"];
+  [interfaceMenu setAutoenablesItems:NO];
+  interfaceMenu.delegate = self;
+  for (int i = 0; i < 2; i++) {
+    NSMenuItem* item = [interfaceMenu addItemWithTitle:i == 0 ? @"Expanded (800 x 600)" : @"Classic (640 x 480)"
+                                                 action:@selector(MCHandlePortItem:) keyEquivalent:@""];
+    [item setTarget:self];
+    [item setTag:(NSInteger)(kPortInterfaceId + i)];
+  }
+  [portMenu setSubmenu:interfaceMenu forItem:interfaceItem];
+
   [_menuObject setSubmenu:portMenu forItem:portItem];
 }
 

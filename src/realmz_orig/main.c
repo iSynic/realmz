@@ -35,8 +35,6 @@ short specailabs(short i);
 #define genevafont 10
 #define MYRMAGIC 0x15621562L
 
-#define screensize 1
-
 #if MYR_CHECK > 0
 unsigned int32_t myrmagictab[10L * 1024L] = {0};
 #endif
@@ -758,8 +756,11 @@ void ToolBoxInit(void) {
   width = (*testdevice)->gdRect.right - (*testdevice)->gdRect.left; /**** get size of screen for display offsets ***/
   depth = (*testdevice)->gdRect.bottom - (*testdevice)->gdRect.top;
 
-  GlobalTop = 20 + (depth - 600) / 2;
-  GlobalLeft = (width - 800) / 2;
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Center the active historical interface instead of always using the larger canvas.
+   */
+  GlobalTop = 20 + (depth - (screensize ? 600 : 480)) / 2;
+  GlobalLeft = (width - (screensize ? 800 : 640)) / 2;
 
   numchannel = -1;
 
@@ -825,8 +826,11 @@ void ToolBoxInit(void) {
 
 keepmoving:
 
-  if ((((**(**testdevice).gdPMap)).bounds.bottom - ((**(**testdevice).gdPMap)).bounds.top < 580) && (!BitAnd(gTheEvent.modifiers, shiftKey))) {
-    MyrParamText((Ptr) "Sorry, this monitor is not displaying 800 X 600 pixels or greater.  This will not do.", (Ptr) "", (Ptr) "", (Ptr) "");
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Accept the original 640 by 480 display in classic layout mode.
+   */
+  if ((((**(**testdevice).gdPMap)).bounds.bottom - ((**(**testdevice).gdPMap)).bounds.top < (screensize ? 580 : 460)) && (!BitAnd(gTheEvent.modifiers, shiftKey))) {
+    MyrParamText((Ptr) (screensize ? "Sorry, this monitor is not displaying 800 X 600 pixels or greater.  This will not do." : "Sorry, this monitor is not displaying 640 X 480 pixels or greater.  This will not do."), (Ptr) "", (Ptr) "", (Ptr) "");
     background = GetNewDialog(151, NIL, (WindowPtr)-1L);
     SetPortDialogPort(background);
     ForeColor(yellowColor);

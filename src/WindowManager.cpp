@@ -3,6 +3,10 @@
 #include "PortMenu.hpp"
 #include "PortPrefs.hpp"
 
+extern "C" {
+short screensize = 1;
+}
+
 #ifdef __APPLE__
 #include "macos/WindowAspect.h"
 #endif
@@ -1249,9 +1253,14 @@ static bool window_pos_on_screen(int x, int y, int w, int h) {
 }
 
 void WindowManager::create_sdl_window() {
-  wm_log.debug_f("WindowManager::create_sdl_window()");
+  this->create_sdl_window(load_port_prefs());
+}
 
-  PortPrefs prefs = load_port_prefs();
+void WindowManager::create_sdl_window(const PortPrefs& prefs) {
+  wm_log.debug_f("WindowManager::create_sdl_window()");
+  set_active_ui_layout(prefs.ui_layout);
+  screensize = prefs.ui_layout == UiLayout::Classic ? 0 : 1;
+  this->pending_ui_layout = prefs.ui_layout;
   this->scale_mode = prefs.scale_mode;
   this->aspect_locked = prefs.aspect_locked;
   this->gamma_idx = prefs.gamma_idx;
@@ -1270,15 +1279,16 @@ void WindowManager::create_sdl_window() {
     SDL_SetWindowPosition(this->sdl_window.get(), this->windowed_x, this->windowed_y);
   }
   if (this->aspect_locked) {
-    SDL_SetWindowAspectRatio(this->sdl_window.get(), kLogicalAspect, kLogicalAspect);
+    SDL_SetWindowAspectRatio(this->sdl_window.get(), static_cast<float>(ui_layout_width()) / ui_layout_height(),
+        static_cast<float>(ui_layout_width()) / ui_layout_height());
   }
   SDL_Renderer* renderer = SDL_CreateRenderer(this->sdl_window.get(), nullptr);
   if (!renderer) {
     throw std::runtime_error(std::format("Could not create window renderer: {}", SDL_GetError()));
   }
-  SDL_SetRenderLogicalPresentation(renderer, kLogicalWindowWidth, kLogicalWindowHeight, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+  SDL_SetRenderLogicalPresentation(renderer, ui_layout_width(), ui_layout_height(), SDL_LOGICAL_PRESENTATION_LETTERBOX);
 
-  this->screen_port.resize(kLogicalWindowWidth, kLogicalWindowHeight);
+  this->screen_port.resize(ui_layout_width(), ui_layout_height());
   this->recomposite_all();
 }
 
@@ -1618,6 +1628,10 @@ void WindowManager::set_scale_mode(SDL_ScaleMode mode) {
   this->recomposite_all();
   this->save_prefs();
 }
+void WindowManager::set_pending_ui_layout(UiLayout layout) {
+  this->pending_ui_layout = layout;
+  this->save_prefs();
+}
 
 void WindowManager::set_aspect_locked(bool locked) {
   this->aspect_locked = locked;
@@ -1625,12 +1639,13 @@ void WindowManager::set_aspect_locked(bool locked) {
     if (locked) {
       int w = 0, h = 0;
       SDL_GetWindowSize(this->sdl_window.get(), &w, &h);
-      int snapped_h = (w * kLogicalWindowHeight + kLogicalWindowWidth / 2) / kLogicalWindowWidth;
+      int snapped_h = (w * ui_layout_height() + ui_layout_width() / 2) / ui_layout_width();
       if (snapped_h != h && !this->is_fullscreen()) {
         SDL_SetWindowSize(this->sdl_window.get(), w, snapped_h);
       }
       if (!this->is_fullscreen()) {
-        SDL_SetWindowAspectRatio(this->sdl_window.get(), kLogicalAspect, kLogicalAspect);
+        SDL_SetWindowAspectRatio(this->sdl_window.get(), static_cast<float>(ui_layout_width()) / ui_layout_height(),
+            static_cast<float>(ui_layout_width()) / ui_layout_height());
       }
     } else {
 #ifdef __APPLE__
@@ -1690,11 +1705,16 @@ void WindowManager::save_prefs() {
   prefs.scale_mode = this->scale_mode;
   prefs.aspect_locked = this->aspect_locked;
   prefs.gamma_idx = this->gamma_idx;
+  prefs.ui_layout = this->pending_ui_layout;
   if (this->sdl_window && !this->is_fullscreen()) {
     SDL_GetWindowSize(this->sdl_window.get(), &this->windowed_w, &this->windowed_h);
   }
   prefs.window_w = this->windowed_w;
   prefs.window_h = this->windowed_h;
+  if (this->pending_ui_layout != active_ui_layout()) {
+    prefs.window_w = this->pending_ui_layout == UiLayout::Classic ? 640 : 800;
+    prefs.window_h = this->pending_ui_layout == UiLayout::Classic ? 480 : 600;
+  }
   prefs.window_x = this->windowed_x;
   prefs.window_y = this->windowed_y;
   save_port_prefs(prefs);

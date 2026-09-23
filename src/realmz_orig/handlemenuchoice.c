@@ -818,7 +818,10 @@ short HandleMenuChoice(void) {
         } else {
           mainrect.top = 321 + downshift;
           mainrect.left = 0;
-          mainrect.bottom = 460 + 96;
+          /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+           * The compact status panel ends at its original 460-pixel edge.
+           */
+          mainrect.bottom = 460 + downshift;
           mainrect.right = 308;
           pict(203, mainrect);
         }
