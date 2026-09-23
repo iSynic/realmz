@@ -293,6 +293,7 @@ private:
     add("Lock Aspect Ratio", kPortAspectLockId);
     add("-", -1);
     add("Color Correction", -1);
+    add("Interface (restart required)", -1);
     return menu;
   }
 
@@ -300,11 +301,12 @@ private:
     auto menu = std::make_shared<Menu>();
     menu->menu_id = -1;
     menu->enabled = true;
-    int start = row == 0 ? kPortFilterId : row == 1 ? kPortScaleId : kPortGammaId;
-    int count = row == 0 ? kPortFilterCount : row == 1 ? kPortScaleCount : kPortGammaCount;
+    int start = row == 0 ? kPortFilterId : row == 1 ? kPortScaleId : row == 4 ? kPortGammaId : kPortInterfaceId;
+    int count = row == 0 ? kPortFilterCount : row == 1 ? kPortScaleCount : row == 4 ? kPortGammaCount : 2;
     for (int i = 0; i < count; ++i) {
       auto& item = menu->items.emplace_back();
-      item.name = row == 0 ? kPortFilters[i].title : row == 1 ? kPortScales[i].title : kPortGammaOptions[i].title;
+      item.name = row == 0 ? kPortFilters[i].title : row == 1 ? kPortScales[i].title :
+          row == 4 ? kPortGammaOptions[i].title : i == 0 ? "Expanded (800 x 600)" : "Classic (640 x 480)";
       int checked = 0, enabled = 1;
       PortMenu_ItemState(start + i, &checked, &enabled);
       item.checked = checked;
@@ -412,7 +414,7 @@ private:
         } catch (const std::exception&) { }
       }
       render_text(r, item.name, 49, y + 3, selected, !item.enabled, false, item.style_flags);
-      bool child = popup.port ? (popup.port_root && (i == 0 || i == 1 || i == 4)) :
+      bool child = popup.port ? (popup.port_root && (i == 0 || i == 1 || i == 4 || i == 5)) :
           item.key_equivalent == 0x1B && item.mark_character;
       if (child) render_text(r, ">", popup.width - 20, y + 3, selected, !item.enabled);
       else if (item.key_equivalent && item.key_equivalent != 0x1B) {
@@ -427,7 +429,7 @@ private:
   std::shared_ptr<Menu> submenu_for(const Popup& popup, int row) {
     if (row < 0 || row >= static_cast<int>(popup.menu->items.size())) return nullptr;
     const auto& item = popup.menu->items[row];
-    if (popup.port) return (popup.port_root && (row == 0 || row == 1 || row == 4)) ? port_submenu(row) : nullptr;
+    if (popup.port) return (popup.port_root && (row == 0 || row == 1 || row == 4 || row == 5)) ? port_submenu(row) : nullptr;
     if (item.key_equivalent != 0x1B || !item.mark_character || !list) return nullptr;
     for (const auto& menu : list->submenus)
       if (menu->menu_id == static_cast<unsigned char>(item.mark_character)) return menu;
@@ -461,7 +463,8 @@ private:
     if (item.key_equivalent == 0x1B && item.mark_character) return;
     if (popup.port) {
       int id = depth == 0 ? kPortAspectLockId :
-          (popups[0].selected == 0 ? kPortFilterId : popups[0].selected == 1 ? kPortScaleId : kPortGammaId) + row;
+          (popups[0].selected == 0 ? kPortFilterId : popups[0].selected == 1 ? kPortScaleId :
+           popups[0].selected == 4 ? kPortGammaId : kPortInterfaceId) + row;
       close(false);
       PortMenu_Apply(id);
       return;
