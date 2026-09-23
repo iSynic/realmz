@@ -3,6 +3,10 @@
 #include "PortMenu.hpp"
 #include "PortPrefs.hpp"
 
+extern "C" {
+short screensize = 1;
+}
+
 #ifdef __APPLE__
 #include "macos/WindowAspect.h"
 #endif
@@ -28,7 +32,7 @@
 
 #ifdef __linux__
 static int linux_scaled_menu_height(int content_width) {
-  return (content_width * kLinuxMenuHeight + kLogicalWindowWidth / 2) / kLogicalWindowWidth;
+  return (content_width * kLinuxMenuHeight + ui_layout_width() / 2) / ui_layout_width();
 }
 #endif
 
@@ -50,6 +54,7 @@ using ResourceDASM::ResourceFile;
 // Enable these to save an image named debug*.bmp every time the main window or dialog items are recomposited
 static constexpr bool ENABLE_RECOMPOSITE_DEBUG = false;
 static constexpr bool ENABLE_DIALOG_RECOMPOSITE_DEBUG = false;
+static constexpr uint64_t TEXT_CARET_BLINK_INTERVAL_MS = 500;
 bool enable_translucent_window_debug = false;
 static size_t debug_number = 1;
 
@@ -551,18 +556,10 @@ public:
         break;
       }
       case ResourceFile::DecodedDialogItem::Type::EDIT_TEXT: {
-        if (!port.draw_text(text, this->rect)) {
-          wm_log.error_f("Error when rendering editable text item {}: {}", resource_id, SDL_GetError());
-        }
-
-        // Draw caret if this item is focused
-        auto window = this->owner_window.lock();
-        if (window && window->get_focused_item().get() == this) {
-          int16_t caret_x = this->rect.left + port.measure_text(text) + 1;
-          Point caret_top = {.h = caret_x, .v = this->rect.top};
-          Point caret_bottom = {.h = caret_x, .v = this->rect.bottom};
-          port.draw_line(caret_top, caret_bottom);
-        }
+        Rect frame_rect = this->rect;
+        InsetRect(&frame_rect, -3, -3);
+        port.draw_rect_outline(frame_rect);
+        this->render_text_in_port(port);
         break;
       }
       case ResourceFile::DecodedDialogItem::Type::CHECKBOX:
@@ -811,6 +808,22 @@ public:
           debug_number, dialog_debug_number, this->item_id, phosg::name_for_enum(this->type),
           this->rect.left, this->rect.top, this->rect.right, this->rect.bottom);
       phosg::save_file(std::format("debug{}-dialog{}.bmp", debug_number, dialog_debug_number++), port.data.serialize(phosg::ImageFormat::WINDOWS_BITMAP));
+    }
+  }
+
+  void render_text_in_port(CCGrafPort& port) const {
+    port.erase_rect(this->rect);
+    if (!port.draw_text(text, this->rect)) {
+      wm_log.error_f("Error when rendering editable text item {}: {}", resource_id, SDL_GetError());
+    }
+
+    // Draw caret if this item is focused
+    auto window = this->owner_window.lock();
+    if (window && window->is_text_caret_visible() && window->get_focused_item().get() == this) {
+      int16_t caret_x = this->rect.left + port.measure_text(text) + 1;
+      Point caret_top = {.h = caret_x, .v = this->rect.top};
+      Point caret_bottom = {.h = caret_x, .v = static_cast<int16_t>(this->rect.bottom - 1)};
+      port.draw_line(caret_top, caret_bottom);
     }
   }
 
@@ -1065,25 +1078,59 @@ std::shared_ptr<DialogItem> Window::get_focused_item() {
   return focused_item;
 }
 
+bool Window::is_text_caret_visible() const {
+  return text_caret_visible;
+}
+
 CCGrafPort& Window::get_port() {
   return this->port;
 }
 
 void Window::set_focused_item(std::shared_ptr<DialogItem> item) {
+  if (focused_item && (focused_item != item)) {
+    text_caret_visible = false;
+    focused_item->render_text_in_port(this->port);
+  }
   focused_item = item;
+  reset_text_caret();
+  item->render_text_in_port(this->port);
+  WindowManager::instance().recomposite_from_window(this->port);
+}
+
+void Window::reset_text_caret() {
+  text_caret_visible = true;
+  text_caret_next_toggle = SDL_GetTicks() + TEXT_CARET_BLINK_INTERVAL_MS;
+}
+
+void Window::idle_text_caret() {
+  if (!focused_item) {
+    return;
+  }
+
+  uint64_t now = SDL_GetTicks();
+  if (text_caret_next_toggle && (now < text_caret_next_toggle)) {
+    return;
+  }
+
+  text_caret_visible = text_caret_next_toggle ? !text_caret_visible : true;
+  text_caret_next_toggle = now + TEXT_CARET_BLINK_INTERVAL_MS;
+  focused_item->render_text_in_port(this->port);
+  WindowManager::instance().recomposite_from_window(this->port);
 }
 
 void Window::handle_text_input(const std::string& text, std::shared_ptr<DialogItem> item) {
   this->log.debug_f("Window::handle_text_input(\"{}\", {})", text, item->str());
   item->append_text(text);
-  item->render_in_port(this->port, true);
+  reset_text_caret();
+  item->render_text_in_port(this->port);
   WindowManager::instance().recomposite_from_window(this->port);
 }
 
 void Window::delete_char(std::shared_ptr<DialogItem> item) {
   this->log.debug_f("Window::delete_char({})", item->str());
   item->delete_char();
-  item->render_in_port(this->port, true);
+  reset_text_caret();
+  item->render_text_in_port(this->port);
   WindowManager::instance().recomposite_from_window(this->port);
 }
 
@@ -1105,7 +1152,11 @@ void Window::erase_and_render() {
     item->render_in_port(this->port, false);
   }
   for (auto item : this->text_items) {
-    item->render_in_port(this->port, false);
+    if (item->type == DialogItemType::EDIT_TEXT) {
+      item->render_text_in_port(this->port);
+    } else {
+      item->render_in_port(this->port, false);
+    }
   }
 
   WindowManager::instance().recomposite_from_window(this->port);
@@ -1212,12 +1263,17 @@ static bool window_pos_on_screen(int x, int y, int w, int h) {
 }
 
 void WindowManager::create_sdl_window() {
+  this->create_sdl_window(load_port_prefs());
+}
+
+void WindowManager::create_sdl_window(const PortPrefs& prefs) {
   wm_log.debug_f("WindowManager::create_sdl_window()");
 #ifdef __linux__
   SDL_SetAppMetadata("Realmz", "8.1.0", "org.fantasoft.realmz");
 #endif
-
-  PortPrefs prefs = load_port_prefs();
+  set_active_ui_layout(prefs.ui_layout);
+  screensize = prefs.ui_layout == UiLayout::Classic ? 0 : 1;
+  this->pending_ui_layout = prefs.ui_layout;
   this->scale_mode = prefs.scale_mode;
   this->aspect_locked = prefs.aspect_locked;
   this->gamma_idx = prefs.gamma_idx;
@@ -1232,7 +1288,7 @@ void WindowManager::create_sdl_window() {
 #else
       prefs.window_h,
 #endif
-      SDL_WINDOW_RESIZABLE));
+      SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY));
   if (!this->sdl_window) {
     throw std::runtime_error(std::format("Could not create SDL window: {}", SDL_GetError()));
   }
@@ -1248,7 +1304,8 @@ void WindowManager::create_sdl_window() {
   }
   if (this->aspect_locked) {
 #ifndef __linux__
-    SDL_SetWindowAspectRatio(this->sdl_window.get(), kLogicalAspect, kLogicalAspect);
+    float aspect = static_cast<float>(ui_layout_width()) / ui_layout_height();
+    SDL_SetWindowAspectRatio(this->sdl_window.get(), aspect, aspect);
 #endif
   }
 #ifdef __linux__
@@ -1258,15 +1315,15 @@ void WindowManager::create_sdl_window() {
   if (!renderer) {
     throw std::runtime_error(std::format("Could not create window renderer: {}", SDL_GetError()));
   }
-  SDL_SetRenderLogicalPresentation(renderer, kLogicalWindowWidth,
+  SDL_SetRenderLogicalPresentation(renderer, ui_layout_width(),
 #ifdef __linux__
-      kLogicalWindowHeight + kLinuxMenuHeight,
+      ui_layout_height() + kLinuxMenuHeight,
 #else
-      kLogicalWindowHeight,
+      ui_layout_height(),
 #endif
       SDL_LOGICAL_PRESENTATION_LETTERBOX);
 
-  this->screen_port.resize(kLogicalWindowWidth, kLogicalWindowHeight);
+  this->screen_port.resize(ui_layout_width(), ui_layout_height());
   this->recomposite_all();
 }
 
@@ -1566,7 +1623,8 @@ void WindowManager::present_screen() {
           SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
           SDL_RenderClear(renderer);
 #ifdef __linux__
-          SDL_FRect game_rect{0, kLinuxMenuHeight, kLogicalWindowWidth, kLogicalWindowHeight};
+          SDL_FRect game_rect{0, kLinuxMenuHeight, static_cast<float>(ui_layout_width()),
+              static_cast<float>(ui_layout_height())};
           SDL_RenderTexture(renderer, texture.get(), nullptr, &game_rect);
 #else
           SDL_RenderTexture(renderer, texture.get(), nullptr, nullptr);
@@ -1622,6 +1680,10 @@ void WindowManager::set_scale_mode(SDL_ScaleMode mode) {
   this->recomposite_all();
   this->save_prefs();
 }
+void WindowManager::set_pending_ui_layout(UiLayout layout) {
+  this->pending_ui_layout = layout;
+  this->save_prefs();
+}
 
 void WindowManager::set_aspect_locked(bool locked) {
   this->aspect_locked = locked;
@@ -1629,16 +1691,17 @@ void WindowManager::set_aspect_locked(bool locked) {
     if (locked) {
       int w = 0, h = 0;
       SDL_GetWindowSize(this->sdl_window.get(), &w, &h);
-      int snapped_h = (w * kLogicalWindowHeight + kLogicalWindowWidth / 2) / kLogicalWindowWidth;
+      int snapped_h = (w * ui_layout_height() + ui_layout_width() / 2) / ui_layout_width();
 #ifdef __linux__
-      snapped_h = (w * (kLogicalWindowHeight + kLinuxMenuHeight) + kLogicalWindowWidth / 2) / kLogicalWindowWidth;
+      snapped_h = (w * (ui_layout_height() + kLinuxMenuHeight) + ui_layout_width() / 2) / ui_layout_width();
 #endif
       if (snapped_h != h && !this->is_fullscreen()) {
         SDL_SetWindowSize(this->sdl_window.get(), w, snapped_h);
       }
       if (!this->is_fullscreen()) {
 #ifndef __linux__
-        SDL_SetWindowAspectRatio(this->sdl_window.get(), kLogicalAspect, kLogicalAspect);
+        float aspect = static_cast<float>(ui_layout_width()) / ui_layout_height();
+        SDL_SetWindowAspectRatio(this->sdl_window.get(), aspect, aspect);
 #endif
       }
     } else {
@@ -1678,13 +1741,13 @@ void WindowManager::on_linux_window_resized() {
   SDL_GetWindowSize(this->sdl_window.get(), &w, &h);
   if (this->aspect_locked && !this->is_fullscreen()) {
     int desired_w = w;
-    int desired_h = (w * (kLogicalWindowHeight + kLinuxMenuHeight) + kLogicalWindowWidth / 2) / kLogicalWindowWidth;
+    int desired_h = (w * (ui_layout_height() + kLinuxMenuHeight) + ui_layout_width() / 2) / ui_layout_width();
     if (h != desired_h) {
       if (linux_last_outer_h > 0 &&
           std::abs(h - linux_last_outer_h) > std::abs(w - linux_last_outer_w)) {
-        desired_w = std::max(kLogicalWindowWidth,
-            (h * kLogicalWindowWidth + (kLogicalWindowHeight + kLinuxMenuHeight) / 2) /
-                (kLogicalWindowHeight + kLinuxMenuHeight));
+        desired_w = std::max(ui_layout_width(),
+            (h * ui_layout_width() + (ui_layout_height() + kLinuxMenuHeight) / 2) /
+                (ui_layout_height() + kLinuxMenuHeight));
         desired_h = h;
       }
       if (desired_w != w || desired_h != h) SDL_SetWindowSize(this->sdl_window.get(), desired_w, desired_h);
@@ -1744,6 +1807,7 @@ void WindowManager::save_prefs() {
   prefs.scale_mode = this->scale_mode;
   prefs.aspect_locked = this->aspect_locked;
   prefs.gamma_idx = this->gamma_idx;
+  prefs.ui_layout = this->pending_ui_layout;
   if (this->sdl_window && !this->is_fullscreen()) {
     SDL_GetWindowSize(this->sdl_window.get(), &this->windowed_w, &this->windowed_h);
 #ifdef __linux__
@@ -1752,6 +1816,10 @@ void WindowManager::save_prefs() {
   }
   prefs.window_w = this->windowed_w;
   prefs.window_h = this->windowed_h;
+  if (this->pending_ui_layout != active_ui_layout()) {
+    prefs.window_w = this->pending_ui_layout == UiLayout::Classic ? 640 : 800;
+    prefs.window_h = this->pending_ui_layout == UiLayout::Classic ? 480 : 600;
+  }
   prefs.window_x = this->windowed_x;
   prefs.window_y = this->windowed_y;
   save_port_prefs(prefs);
@@ -2102,8 +2170,8 @@ Boolean DialogSelect(const EventRecord* ev, DialogPtr* dialog, short* item_hit) 
   // return false, which takes care of (3). We may have to implement (4) to
   // activate SDL edit controls when the user clicks them (TODO). We may also
   // have to implement (5) later on. (6) is implemented; Realmz uses it for a
-  // lot of interactions. (7) and (8) don't do anything, so they're technically
-  // implemented as well.
+  // lot of interactions. (7) requires no action, and (8) is handled when the
+  // event queue is idle.
 
   auto window = WindowManager::instance().window_for_port(CCGrafPort::as_port(ev->window_port));
 
@@ -2656,7 +2724,7 @@ void TEUpdateUnstyled(const Rect& r, TEHandle te) {
   auto item = DialogItem::get_item_by_handle(unwrap_opaque_handle(reinterpret_cast<Handle>(te)));
   wm_log.debug_f("TEUpdateUnstyled({{x0={}, y0={}, x1={}, y1={}}}, {})", r.left, r.top, r.right, r.bottom, reinterpret_cast<void*>(te));
   auto window = item->owner_window.lock();
-  item->render_in_port(window->get_port(), true);
+  item->render_text_in_port(window->get_port());
   WindowManager::instance().recomposite_from_window(window);
 }
 

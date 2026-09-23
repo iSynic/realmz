@@ -16,6 +16,7 @@
 #include "../QuickDraw.hpp"
 #include "../WindowManager.hpp"
 #include "../EventManager.h"
+#include "../PortPrefs.hpp"
 
 namespace {
 constexpr int kRowHeight = kLinuxMenuRowHeight;
@@ -58,11 +59,11 @@ public:
     if (!parent) return;
     if (!renderer) renderer = SDL_GetRenderer(parent);
     if (!renderer) return;
-    SDL_FRect bar{0, 0, 800, kLinuxMenuHeight};
+    SDL_FRect bar{0, 0, static_cast<float>(ui_layout_width()), kLinuxMenuHeight};
     SDL_SetRenderDrawColor(renderer, 221, 221, 221, 255);
     SDL_RenderFillRect(renderer, &bar);
     SDL_SetRenderDrawColor(renderer, 90, 90, 90, 255);
-    SDL_RenderLine(renderer, 0, kLinuxMenuHeight - 1, 800, kLinuxMenuHeight - 1);
+    SDL_RenderLine(renderer, 0, kLinuxMenuHeight - 1, ui_layout_width(), kLinuxMenuHeight - 1);
     int x = 8;
     int index = 0;
     for (const auto& menu : list->menus) {

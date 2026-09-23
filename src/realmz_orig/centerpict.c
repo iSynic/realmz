@@ -1,5 +1,6 @@
 #include "prototypes.h"
 #include "variables.h"
+#include "UiViewport.h"
 
 /*********************** updatemusic *****************/
 void updatemusic(void) {
@@ -14,6 +15,7 @@ void centerpict(void) {
   register short tt, t;
   short tempicon;
   Rect source, bitrect, copyrect;
+  UiViewportGeometry viewport = ui_viewport_geometry(screensize);
 
   if (incombat) {
     centerfield(5 + (2 * screensize), 5 + screensize);
@@ -44,36 +46,20 @@ void centerpict(void) {
     SetPort((GrafPtr)GetWindowPort(look));
   }
 
-  lookx += (partyx - 8);
-  looky += (partyy - 6);
-
-  partyx = 8;
-  partyy = 6;
-
-  if (lookx < 0) {
-    partyx += lookx;
-    lookx = 0;
-  } else if (lookx > 75) {
-    partyx += lookx - 75;
-    lookx = 75;
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Keep the party's world tile fixed while the active viewport follows it.
+   */
+  {
+    int next_lookx, next_looky, next_partyx, next_partyy;
+    ui_viewport_recenter(lookx + partyx, viewport.exploration_center_x, viewport.columns,
+        &next_lookx, &next_partyx);
+    ui_viewport_recenter(looky + partyy, viewport.exploration_center_y, viewport.rows,
+        &next_looky, &next_partyy);
+    lookx = next_lookx;
+    looky = next_looky;
+    partyx = next_partyx;
+    partyy = next_partyy;
   }
-
-  if (looky < 0) {
-    partyy += looky;
-    looky = 0;
-  } else if (looky > 77) {
-    partyy += looky - 77;
-    looky = 77;
-  }
-
-  if (partyy > 13)
-    partyy = 12;
-  else if (partyy < 0)
-    partyy = 0;
-  if (partyx > 15)
-    partyx = 14;
-  else if (partyx < 0)
-    partyx = 0;
 
   cansee2(partyx, partyy);
 
@@ -86,13 +72,16 @@ void centerpict(void) {
   icon.top = -32;
   icon.bottom = 0;
 
-  for (tt = looky; tt < 13 + looky; tt++) {
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Draw exactly the tile area visible in the selected interface.
+   */
+  for (tt = looky; tt < viewport.rows + looky; tt++) {
     icon.top += 32;
     icon.bottom += 32;
     icon.left = -32;
     icon.right = 0;
 
-    for (t = lookx; t < 15 + lookx; t++) {
+    for (t = lookx; t < viewport.columns + lookx; t++) {
       icon.left += 32;
       icon.right += 32;
 

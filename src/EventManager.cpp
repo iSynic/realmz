@@ -331,6 +331,10 @@ public:
   EventRecord get_next_event(uint32_t wait_ms) {
     this->enqueue_pending_events(wait_ms);
     if (this->event_queue.empty()) {
+      auto window = WindowManager::instance().front_window();
+      if (window) {
+        window->idle_text_caret();
+      }
       return this->make_null_event();
     } else {
       EventRecord ev = this->event_queue.front();
@@ -488,15 +492,15 @@ protected:
         // control-character KCHR table and break Command-key shortcuts and typed characters.
         this->set_modifier_value(EVMOD_CONTROL_KEY_DOWN, false);
 #else
-        this->set_modifier_value(EVMOD_CONTROL_KEY_DOWN, e.key.mod & SDL_KMOD_LCTRL);
+        this->set_modifier_value(EVMOD_CONTROL_KEY_DOWN, e.key.mod & SDL_KMOD_CTRL);
 #endif
-        this->set_modifier_value(EVMOD_OPTION_KEY_DOWN, e.key.mod & SDL_KMOD_LALT);
+        this->set_modifier_value(EVMOD_OPTION_KEY_DOWN, e.key.mod & SDL_KMOD_ALT);
         this->set_modifier_value(EVMOD_CAPS_LOCK_ENABLED, e.key.mod & SDL_KMOD_CAPS);
         this->set_modifier_value(EVMOD_SHIFT_KEY_DOWN, e.key.mod & SDL_KMOD_LSHIFT);
 #if defined(_WIN32) || defined(__linux__)
         // The Windows (Super) key is reserved by the OS for the Start menu and shell shortcuts, so
         // it cannot reliably act as the Mac Command key. Map the Control key to Command instead.
-        this->set_modifier_value(EVMOD_COMMAND_KEY_DOWN, e.key.mod & SDL_KMOD_LCTRL);
+        this->set_modifier_value(EVMOD_COMMAND_KEY_DOWN, e.key.mod & SDL_KMOD_CTRL);
 #else
         this->set_modifier_value(EVMOD_COMMAND_KEY_DOWN, e.key.mod & SDL_KMOD_GUI);
 #endif

@@ -1,12 +1,14 @@
 #include "prototypes.h"
 #include "variables.h"
+#include "UiViewport.h"
 
 /************************ centerfield ************************/
 void centerfield(short x, short y) {
   register t, tt;
-  char newx, newy;
   short tempicon, ten, single;
   char bq[maxloop];
+  UiViewportGeometry viewport = ui_viewport_geometry(screensize);
+  int next_fieldx, next_fieldy, local, delta_x, delta_y;
 
   if (!incombat) {
     centerpict();
@@ -21,33 +23,25 @@ void centerfield(short x, short y) {
   for (t = 0; t < maxloop; t++)
     bq[t] = 0;
 
-  newx = fieldx + x - 7;
-  newy = fieldy + y - 6;
-
-  if (newx < 0)
-    x -= newx;
-  if (newy < 0)
-    y -= newy;
-
-  if (newx > 75)
-    x -= (newx - 75);
   /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-   * Clamp fieldy at 77, not 76, so the last field row can scroll into view,
-   * matching the fieldx clamp of 75 and centerpict's 75/77. */
-  if (newy > 77)
-    y -= (newy - 77);
-
-  fieldx += (x - 7);
-  fieldy += (y - 6);
+   * Use the selected viewport's center and field limits. The same camera
+   * delta must be applied to characters and monsters below.
+   */
+  ui_viewport_recenter(fieldx + x, viewport.combat_center_x, viewport.columns, &next_fieldx, &local);
+  ui_viewport_recenter(fieldy + y, viewport.combat_center_y, viewport.rows, &next_fieldy, &local);
+  delta_x = next_fieldx - fieldx;
+  delta_y = next_fieldy - fieldy;
+  fieldx = next_fieldx;
+  fieldy = next_fieldy;
 
   for (t = 0; t <= charnum; t++) {
-    pos[t][0] -= (x - 7);
-    pos[t][1] -= (y - 6);
+    pos[t][0] -= delta_x;
+    pos[t][1] -= delta_y;
   }
 
   for (t = 0; t < maxmon; t++) {
-    monpos[t][0] -= (x - 7);
-    monpos[t][1] -= (y - 6);
+    monpos[t][0] -= delta_x;
+    monpos[t][1] -= delta_y;
   }
 
   SetPort((GrafPtr)GetWindowPort(look));
@@ -59,17 +53,15 @@ void centerfield(short x, short y) {
   BackColor(whiteColor);
 
   /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
-   * Bound both loops to the field (short[90][90]). At the fieldx clamp of 75
-   * the column loop reached field[90][tt], reading past the array into the
-   * globals beyond it; a stray value there became a bad body id that later
-   * smashed the stack at bq[tempicon]. */
-  for (tt = fieldy; (tt < fieldy + 14) && (tt < 90); tt++) // Myriad (+11)
+   * Retain the extra row and column for large sprites, bounded by the field.
+   */
+  for (tt = fieldy; (tt < fieldy + viewport.rows + 1) && (tt < 90); tt++) // Myriad (+11)
   {
     icon.top += 32;
     icon.bottom += 32;
     icon.left = -32;
     icon.right = 0;
-    for (t = fieldx; (t < fieldx + 16) && (t < 90); t++) // Myriad (+11)
+    for (t = fieldx; (t < fieldx + viewport.columns + 1) && (t < 90); t++) // Myriad (+11)
     {
       icon.left += 32;
       icon.right += 32;

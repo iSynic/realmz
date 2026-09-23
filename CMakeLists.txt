@@ -18,6 +18,7 @@ project(Realmz
     DESCRIPTION "Classic turn-based RPG from Fantasoft"
     LANGUAGES C CXX
 )
+enable_testing()
 # Enable Objective-C only on macOS (needed for MenuController.mm)
 if(APPLE)
     enable_language(OBJC)
@@ -261,6 +262,7 @@ endif()
 # Installed in Contents/Resources
 set(RESOURCE_FILES
     resources/realmz.rsrc
+    resources/classic-ui.rsrc
     bundle/AppIcon.icns
     "resources/Black Chancery.ttf"
     "resources/Black Chancery Bold.ttf"
@@ -352,6 +354,39 @@ if(UNIX AND NOT APPLE)
 endif()
 
 set(TEST_EXECUTABLES "GraphicsTest")
+add_executable(ClassicResourceTest src/tests/ClassicResourceTest.cpp)
+target_link_libraries(ClassicResourceTest PRIVATE resource_file::resource_file phosg::phosg)
+add_dependencies(Realmz ClassicResourceTest)
+add_test(NAME ClassicResourceTest COMMAND ClassicResourceTest "${CMAKE_CURRENT_SOURCE_DIR}/resources/classic-ui.rsrc")
+add_executable(ClassicLayoutIntegrationTest src/tests/ClassicLayoutIntegrationTest.cpp)
+target_link_libraries(ClassicLayoutIntegrationTest PRIVATE realmz_lib)
+add_custom_command(TARGET ClassicLayoutIntegrationTest POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/resources/classic-ui.rsrc" "$<TARGET_FILE_DIR:ClassicLayoutIntegrationTest>"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/base/Realmz" "$<TARGET_FILE_DIR:ClassicLayoutIntegrationTest>"
+)
+add_dependencies(Realmz ClassicLayoutIntegrationTest)
+add_test(NAME ClassicLayoutIntegrationTest COMMAND ClassicLayoutIntegrationTest)
+add_executable(PortPrefsTest src/tests/PortPrefsTest.cpp)
+target_link_libraries(PortPrefsTest PRIVATE realmz_lib)
+add_dependencies(Realmz PortPrefsTest)
+add_test(NAME PortPrefsTest COMMAND PortPrefsTest)
+add_executable(LayoutCanvasTest src/tests/LayoutCanvasTest.cpp)
+target_link_libraries(LayoutCanvasTest PRIVATE realmz_lib)
+add_dependencies(Realmz LayoutCanvasTest)
+add_executable(UiViewportTest src/tests/UiViewportTest.cpp)
+target_include_directories(UiViewportTest PRIVATE src/realmz_orig)
+add_dependencies(Realmz UiViewportTest)
+add_test(NAME UiViewportTest COMMAND UiViewportTest)
+add_test(NAME ClassicNativeCanvasTest COMMAND LayoutCanvasTest classic 1)
+add_test(NAME ClassicEnlargedCanvasTest COMMAND LayoutCanvasTest classic 2)
+add_test(NAME ExpandedNativeCanvasTest COMMAND LayoutCanvasTest expanded 1)
+add_test(NAME ExpandedEnlargedCanvasTest COMMAND LayoutCanvasTest expanded 2)
+if(WIN32)
+    get_filename_component(COMPILER_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    set_tests_properties(ClassicResourceTest ClassicLayoutIntegrationTest PortPrefsTest UiViewportTest
+        ClassicNativeCanvasTest ClassicEnlargedCanvasTest ExpandedNativeCanvasTest ExpandedEnlargedCanvasTest
+        PROPERTIES ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:${COMPILER_BIN_DIR}")
+endif()
 foreach(TEST_EXECUTABLE ${TEST_EXECUTABLES})
     add_executable(${TEST_EXECUTABLE} MACOSX_BUNDLE
         src/tests/${TEST_EXECUTABLE}.cpp

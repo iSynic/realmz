@@ -13,6 +13,8 @@ NSMenu* MCCreateSubMenu(NSString* title, const Menu& menuRes, const std::list<st
 // We have to forward declare because of PixMap collision w/QuickDraw
 phosg::ImageRGBA8888N DecodeCIconImage(int16_t iconID);
 
+static constexpr char kDiamondMark = 19;
+
 // Wraps a decoded cicn as an NSImage, NN scale 2x, byteswap BGRA->RGBA.
 static constexpr NSInteger kMenuIconUpscale = 2;
 
@@ -187,6 +189,19 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
   }
   [portMenu setSubmenu:gammaMenu forItem:gammaItem];
 
+  NSMenuItem* interfaceItem = [[NSMenuItem alloc] initWithTitle:@"Interface (restart required)" action:NULL keyEquivalent:@""];
+  [portMenu addItem:interfaceItem];
+  NSMenu* interfaceMenu = [[NSMenu alloc] initWithTitle:@"Interface"];
+  [interfaceMenu setAutoenablesItems:NO];
+  interfaceMenu.delegate = self;
+  for (int i = 0; i < 2; i++) {
+    NSMenuItem* item = [interfaceMenu addItemWithTitle:i == 0 ? @"Expanded (800 x 600)" : @"Classic (640 x 480)"
+                                                 action:@selector(MCHandlePortItem:) keyEquivalent:@""];
+    [item setTarget:self];
+    [item setTag:(NSInteger)(kPortInterfaceId + i)];
+  }
+  [portMenu setSubmenu:interfaceMenu forItem:interfaceItem];
+
   [_menuObject setSubmenu:portMenu forItem:portItem];
 }
 
@@ -224,7 +239,7 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
         subMenuItem.enabled = subMenuItemRes.enabled;
         bool mark_is_submenu_link = (subMenuItemRes.key_equivalent == 0x1B);
         char mark = mark_is_submenu_link ? 0 : subMenuItemRes.mark_character;
-        if (subMenuItemRes.checked || mark == 19) {
+        if (subMenuItemRes.checked || mark == kDiamondMark) {
           subMenuItem.state = NSControlStateValueOn;
         } else if (mark != 0) {
           subMenuItem.state = NSControlStateValueMixed;
@@ -300,6 +315,11 @@ static NSImage* MCImageForCicn(int16_t cicnID) {
     id menuIdentifier = [[MCMenuItemIdentifier alloc] initWithRawIds:menu->menu_id itemId:itemId];
     [menuItem setRepresentedObject:menuIdentifier];
     menuItem.enabled = item.enabled;
+    if (item.checked || item.mark_character == kDiamondMark) {
+      menuItem.state = NSControlStateValueOn;
+    } else if (item.mark_character != 0) {
+      menuItem.state = NSControlStateValueMixed;
+    }
     NSImage* icon = MCImageForCicn(item.icon_id);
     if (icon != nil) {
       [menuItem setImage:icon];

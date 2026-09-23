@@ -17,8 +17,7 @@ struct PortFilterOption {
 
 struct PortScaleOption {
   const char* title;
-  int width;
-  int height;
+  int half_steps;
 };
 
 inline constexpr PortFilterOption kPortFilters[] = {
@@ -28,11 +27,11 @@ inline constexpr PortFilterOption kPortFilters[] = {
 };
 
 inline constexpr PortScaleOption kPortScales[] = {
-    {"1x (Default)", 800, 600},
-    {"1.5x", 1200, 900},
-    {"2x", 1600, 1200},
-    {"2.5x", 2000, 1500},
-    {"3x", 2400, 1800},
+    {"1x (Default)", 2},
+    {"1.5x", 3},
+    {"2x", 4},
+    {"2.5x", 5},
+    {"3x", 6},
 };
 
 inline constexpr int kPortFilterCount = sizeof(kPortFilters) / sizeof(kPortFilters[0]);
@@ -60,7 +59,8 @@ inline constexpr int kPortFilterId = 0;
 inline constexpr int kPortScaleId = kPortFilterId + kPortFilterCount;
 inline constexpr int kPortAspectLockId = kPortScaleId + kPortScaleCount;
 inline constexpr int kPortGammaId = kPortAspectLockId + 1;
-inline constexpr int kPortItemCount = kPortGammaId + kPortGammaCount;
+inline constexpr int kPortInterfaceId = kPortGammaId + kPortGammaCount;
+inline constexpr int kPortItemCount = kPortInterfaceId + 2;
 
 void PortMenu_Apply(int id);
 void PortMenu_ItemState(int id, int* checked, int* enabled);

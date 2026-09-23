@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "../PortMenu.hpp"
+#include "../PortPrefs.hpp"
 #include "./WinMenuController.hpp"
 #include <utility>
 
@@ -67,6 +68,11 @@ static void BuildPortMenu(HMENU menubar) {
 
   AppendMenu(port_menu, MF_SEPARATOR, 0, nullptr);
   AppendMenu(port_menu, MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>(gamma_menu), "Color Correction");
+
+  HMENU interface_menu = CreatePopupMenu();
+  AppendMenu(interface_menu, MF_STRING, PORT_CMD_BASE + kPortInterfaceId, "Expanded (800 x 600)");
+  AppendMenu(interface_menu, MF_STRING, PORT_CMD_BASE + kPortInterfaceId + 1, "Classic (640 x 480)");
+  AppendMenu(port_menu, MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>(interface_menu), "Interface (restart required)");
 
   AppendMenu(menubar, MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>(port_menu), "Port");
 }
@@ -390,7 +396,7 @@ void WinMenuSync(SDL_Window* sdl_window, std::shared_ptr<WinMenuList> menu_list,
   // Capture the current logical size so it can be reapplied after the menu bar is
   // attached (see the note below). Reapplying the current size rather than the fixed
   // logical default keeps a scale chosen from the Port menu from being reset on the next sync.
-  int client_w = kLogicalWindowWidth, client_h = kLogicalWindowHeight;
+  int client_w = ui_layout_width(), client_h = ui_layout_height();
   SDL_GetWindowSize(sdl_window, &client_w, &client_h);
 
   HMENU win_menu = CreateMenu();
