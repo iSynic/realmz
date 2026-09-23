@@ -6,6 +6,9 @@
 #ifdef __APPLE__
 #include "macos/WindowAspect.h"
 #endif
+#ifdef __linux__
+#include "linux/MenuController.hpp"
+#endif
 
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_properties.h>
@@ -19,8 +22,15 @@
 #include <SDL3/SDL_pixels.h>
 #include <SDL3/SDL_render.h>
 #include <SDL3/SDL_video.h>
+
 #include <SDL3_image/SDL_image.h>
 #include <SDL3_ttf/SDL_ttf.h>
+
+#ifdef __linux__
+static int linux_scaled_menu_height(int content_width) {
+  return (content_width * kLinuxMenuHeight + kLogicalWindowWidth / 2) / kLogicalWindowWidth;
+}
+#endif
 
 #include <phosg/Strings.hh>
 #include <resource_file/BitmapFontRenderer.hh>
@@ -1203,6 +1213,9 @@ static bool window_pos_on_screen(int x, int y, int w, int h) {
 
 void WindowManager::create_sdl_window() {
   wm_log.debug_f("WindowManager::create_sdl_window()");
+#ifdef __linux__
+  SDL_SetAppMetadata("Realmz", "8.1.0", "org.fantasoft.realmz");
+#endif
 
   PortPrefs prefs = load_port_prefs();
   this->scale_mode = prefs.scale_mode;
@@ -1213,21 +1226,45 @@ void WindowManager::create_sdl_window() {
   this->windowed_x = prefs.window_x;
   this->windowed_y = prefs.window_y;
 
-  this->sdl_window = sdl_make_shared(SDL_CreateWindow("Realmz", prefs.window_w, prefs.window_h, SDL_WINDOW_RESIZABLE));
+  this->sdl_window = sdl_make_shared(SDL_CreateWindow("Realmz", prefs.window_w,
+#ifdef __linux__
+      prefs.window_h + linux_scaled_menu_height(prefs.window_w),
+#else
+      prefs.window_h,
+#endif
+      SDL_WINDOW_RESIZABLE));
   if (!this->sdl_window) {
     throw std::runtime_error(std::format("Could not create SDL window: {}", SDL_GetError()));
   }
+#ifdef __linux__
+  std::string icon_path = std::string(SDL_GetBasePath()) + "realmz.png";
+  if (auto* icon = IMG_Load(icon_path.c_str())) {
+    SDL_SetWindowIcon(this->sdl_window.get(), icon);
+    SDL_DestroySurface(icon);
+  }
+#endif
   if (window_pos_on_screen(this->windowed_x, this->windowed_y, prefs.window_w, prefs.window_h)) {
     SDL_SetWindowPosition(this->sdl_window.get(), this->windowed_x, this->windowed_y);
   }
   if (this->aspect_locked) {
+#ifndef __linux__
     SDL_SetWindowAspectRatio(this->sdl_window.get(), kLogicalAspect, kLogicalAspect);
+#endif
   }
+#ifdef __linux__
+  SDL_GetWindowSize(this->sdl_window.get(), &this->linux_last_outer_w, &this->linux_last_outer_h);
+#endif
   SDL_Renderer* renderer = SDL_CreateRenderer(this->sdl_window.get(), nullptr);
   if (!renderer) {
     throw std::runtime_error(std::format("Could not create window renderer: {}", SDL_GetError()));
   }
-  SDL_SetRenderLogicalPresentation(renderer, kLogicalWindowWidth, kLogicalWindowHeight, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+  SDL_SetRenderLogicalPresentation(renderer, kLogicalWindowWidth,
+#ifdef __linux__
+      kLogicalWindowHeight + kLinuxMenuHeight,
+#else
+      kLogicalWindowHeight,
+#endif
+      SDL_LOGICAL_PRESENTATION_LETTERBOX);
 
   this->screen_port.resize(kLogicalWindowWidth, kLogicalWindowHeight);
   this->recomposite_all();
@@ -1385,8 +1422,16 @@ void WindowManager::on_dialog_item_focus_changed() {
     float right = window_rect.left + item_rect.right;
     float bottom = window_rect.top + item_rect.bottom;
     if (auto* renderer = SDL_GetRenderer(this->sdl_window.get())) {
-      SDL_RenderCoordinatesToWindow(renderer, left, top, &left, &top);
-      SDL_RenderCoordinatesToWindow(renderer, right, bottom, &right, &bottom);
+      SDL_RenderCoordinatesToWindow(renderer, left, top
+#ifdef __linux__
+          + kLinuxMenuHeight
+#endif
+          , &left, &top);
+      SDL_RenderCoordinatesToWindow(renderer, right, bottom
+#ifdef __linux__
+          + kLinuxMenuHeight
+#endif
+          , &right, &bottom);
     }
 
     SDL_Rect rect;
@@ -1520,10 +1565,18 @@ void WindowManager::present_screen() {
           SDL_SetTextureScaleMode(texture.get(), this->scale_mode);
           SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
           SDL_RenderClear(renderer);
+#ifdef __linux__
+          SDL_FRect game_rect{0, kLinuxMenuHeight, kLogicalWindowWidth, kLogicalWindowHeight};
+          SDL_RenderTexture(renderer, texture.get(), nullptr, &game_rect);
+#else
           SDL_RenderTexture(renderer, texture.get(), nullptr, nullptr);
+#endif
         }
       }
 
+#ifdef __linux__
+      LinuxMenuDrawBar(renderer);
+#endif
       SDL_RenderPresent(renderer);
       SDL_SyncWindow(this->sdl_window.get());
     }
@@ -1577,16 +1630,21 @@ void WindowManager::set_aspect_locked(bool locked) {
       int w = 0, h = 0;
       SDL_GetWindowSize(this->sdl_window.get(), &w, &h);
       int snapped_h = (w * kLogicalWindowHeight + kLogicalWindowWidth / 2) / kLogicalWindowWidth;
+#ifdef __linux__
+      snapped_h = (w * (kLogicalWindowHeight + kLinuxMenuHeight) + kLogicalWindowWidth / 2) / kLogicalWindowWidth;
+#endif
       if (snapped_h != h && !this->is_fullscreen()) {
         SDL_SetWindowSize(this->sdl_window.get(), w, snapped_h);
       }
       if (!this->is_fullscreen()) {
+#ifndef __linux__
         SDL_SetWindowAspectRatio(this->sdl_window.get(), kLogicalAspect, kLogicalAspect);
+#endif
       }
     } else {
 #ifdef __APPLE__
       MacResetWindowAspect(this->sdl_window.get());
-#else
+#elif !defined(__linux__)
       SDL_SetWindowAspectRatio(this->sdl_window.get(), 0.0f, 0.0f);
 #endif
     }
@@ -1598,10 +1656,46 @@ void WindowManager::set_window_size(int w, int h) {
   if (!this->sdl_window) {
     return;
   }
-  SDL_SetWindowSize(this->sdl_window.get(), w, h);
+  SDL_SetWindowSize(this->sdl_window.get(), w,
+#ifdef __linux__
+      h + linux_scaled_menu_height(w)
+#else
+      h
+#endif
+  );
+#ifdef __linux__
+  this->linux_last_outer_w = w;
+  this->linux_last_outer_h = h + linux_scaled_menu_height(w);
+#endif
   this->recomposite_all();
   this->save_prefs();
 }
+
+#ifdef __linux__
+void WindowManager::on_linux_window_resized() {
+  if (!this->sdl_window) return;
+  int w = 0, h = 0;
+  SDL_GetWindowSize(this->sdl_window.get(), &w, &h);
+  if (this->aspect_locked && !this->is_fullscreen()) {
+    int desired_w = w;
+    int desired_h = (w * (kLogicalWindowHeight + kLinuxMenuHeight) + kLogicalWindowWidth / 2) / kLogicalWindowWidth;
+    if (h != desired_h) {
+      if (linux_last_outer_h > 0 &&
+          std::abs(h - linux_last_outer_h) > std::abs(w - linux_last_outer_w)) {
+        desired_w = std::max(kLogicalWindowWidth,
+            (h * kLogicalWindowWidth + (kLogicalWindowHeight + kLinuxMenuHeight) / 2) /
+                (kLogicalWindowHeight + kLinuxMenuHeight));
+        desired_h = h;
+      }
+      if (desired_w != w || desired_h != h) SDL_SetWindowSize(this->sdl_window.get(), desired_w, desired_h);
+    }
+    w = desired_w;
+    h = desired_h;
+  }
+  linux_last_outer_w = w;
+  linux_last_outer_h = h;
+}
+#endif
 
 bool WindowManager::size_fits(int w, int h) const {
   if (!this->sdl_window) {
@@ -1612,12 +1706,21 @@ bool WindowManager::size_fits(int w, int h) const {
   if (!SDL_GetDisplayUsableBounds(display, &usable)) {
     return true;
   }
-  return (w <= usable.w) && (h <= usable.h);
+  return (w <= usable.w) && (
+#ifdef __linux__
+      h + linux_scaled_menu_height(w)
+#else
+      h
+#endif
+      <= usable.h);
 }
 
 void WindowManager::get_window_size(int* w, int* h) const {
   if (this->sdl_window) {
     SDL_GetWindowSize(this->sdl_window.get(), w, h);
+#ifdef __linux__
+    *h = std::max(0, *h - linux_scaled_menu_height(*w));
+#endif
   } else {
     *w = *h = 0;
   }
@@ -1643,6 +1746,9 @@ void WindowManager::save_prefs() {
   prefs.gamma_idx = this->gamma_idx;
   if (this->sdl_window && !this->is_fullscreen()) {
     SDL_GetWindowSize(this->sdl_window.get(), &this->windowed_w, &this->windowed_h);
+#ifdef __linux__
+    this->windowed_h = std::max(0, this->windowed_h - linux_scaled_menu_height(this->windowed_w));
+#endif
   }
   prefs.window_w = this->windowed_w;
   prefs.window_h = this->windowed_h;

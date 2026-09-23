@@ -241,6 +241,13 @@ extern short blankround;
 extern int32_t mouseuptime;
 extern Handle myMenuBar, copywright;
 extern int32_t templong;
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * The legacy selection array shares its name with POSIX select(). Rename its
+ * link symbol on Linux after the platform headers have been included.
+ */
+#if defined(__linux__)
+#define select realmz_selection
+#endif
 extern short select[6];
 extern Boolean needupdate, shortupdateneed, putup;
 extern short mapshiftx, mapshifty, divineref, itemrefnum, refnum, jewelsrefnum, portraitrefnum;

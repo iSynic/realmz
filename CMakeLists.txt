@@ -254,6 +254,8 @@ elseif(WIN32)
     list(APPEND realmz_lib_LINK_LIBRARIES
         bcrypt # Used by phosg::phosg during compilation for windows targets
     )
+elseif(UNIX)
+    list(APPEND SOURCES src/linux/MenuController.cpp)
 endif()
 
 # Installed in Contents/Resources
@@ -344,6 +346,10 @@ add_custom_command(TARGET Realmz POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/base/Realmz" "$<TARGET_FILE_DIR:Realmz>"
     COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/vendored/Inter/InterVariable.ttf" "$<TARGET_FILE_DIR:Realmz>"
 )
+if(UNIX AND NOT APPLE)
+    add_custom_command(TARGET Realmz POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/packaging/linux/realmz.png" "$<TARGET_FILE_DIR:Realmz>")
+endif()
 
 set(TEST_EXECUTABLES "GraphicsTest")
 foreach(TEST_EXECUTABLE ${TEST_EXECUTABLES})
@@ -363,6 +369,23 @@ foreach(TEST_EXECUTABLE ${TEST_EXECUTABLES})
     target_compile_options(${TEST_EXECUTABLE} PRIVATE -fsanitize=address)
     target_link_options(${TEST_EXECUTABLE} PRIVATE -fsanitize=address)
 endforeach()
+if(UNIX AND NOT APPLE)
+    enable_testing()
+    add_executable(LinuxMenuTest src/tests/LinuxMenuTest.cpp)
+    target_link_libraries(LinuxMenuTest PRIVATE realmz_lib)
+    add_dependencies(LinuxMenuTest Realmz)
+    add_test(NAME LinuxMenuTest COMMAND LinuxMenuTest)
+    set_tests_properties(LinuxMenuTest PROPERTIES
+        TIMEOUT 20
+        ENVIRONMENT "XDG_DATA_HOME=${CMAKE_BINARY_DIR}/test-menu-data")
+    add_executable(LinuxStorageTest src/tests/LinuxStorageTest.cpp)
+    target_link_libraries(LinuxStorageTest PRIVATE realmz_lib)
+    add_dependencies(LinuxStorageTest Realmz)
+    add_test(NAME LinuxStorageTest COMMAND LinuxStorageTest)
+    set_tests_properties(LinuxStorageTest PROPERTIES
+        TIMEOUT 20
+        ENVIRONMENT "XDG_DATA_HOME=${CMAKE_BINARY_DIR}/test-user-data")
+endif()
 
 # Scenario data installed in Contents/Resources/Scenarios
 set(SCENARIO_NAMES
@@ -401,8 +424,18 @@ if(APPLE)
     # specify directly in the Mach-0 executable the directories in which runtime libraries may
     # be found. By default, LIBRARY artifacts will be installed to Resources/lib in the bundle,
     # so we set the RPATH below to this directory.
-    install(IMPORTED_RUNTIME_ARTIFACTS Realmz RUNTIME_DEPENDENCY_SET runtimeDeps)
-    install(RUNTIME_DEPENDENCY_SET runtimeDeps LIBRARY)
+    install(TARGETS Realmz RUNTIME DESTINATION "MacOS")
+    install(FILES
+        $<TARGET_FILE:SDL3-shared>
+        $<TARGET_SONAME_FILE:SDL3-shared>
+        $<TARGET_LINKER_FILE:SDL3-shared>
+        $<TARGET_FILE:SDL3_ttf-shared>
+        $<TARGET_SONAME_FILE:SDL3_ttf-shared>
+        $<TARGET_LINKER_FILE:SDL3_ttf-shared>
+        $<TARGET_FILE:SDL3_image-shared>
+        $<TARGET_SONAME_FILE:SDL3_image-shared>
+        $<TARGET_LINKER_FILE:SDL3_image-shared>
+        DESTINATION "lib")
 
     # Manually set the rpath to avoid CMake automatically adding hardcoded build machine paths
     set_target_properties(Realmz PROPERTIES
@@ -435,6 +468,35 @@ elseif(WIN32)
         message("Found asan lib at ${libasan}")
         install(FILES ${libc++} ${libunwind} ${libasan} DESTINATION ${CMAKE_INSTALL_BINDIR})
     endif()
+elseif(UNIX)
+    # The SDL libraries are copied beside Realmz rather than installed via their
+    # own install rules, so give their dependent-library lookups a relative path.
+    set_target_properties(SDL3-shared SDL3_ttf-shared SDL3_image-shared PROPERTIES
+        INSTALL_RPATH "$ORIGIN" BUILD_WITH_INSTALL_RPATH TRUE)
+    install(TARGETS Realmz DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES ${RESOURCE_FILES} DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES packaging/linux/realmz.png DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES ${DATA_RESOURCE_FILES} DESTINATION "${CMAKE_INSTALL_BINDIR}/Data Files")
+    install(DIRECTORY "base/Realmz/Scenarios" DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES ${CHARACTER_DATA_FILES} DESTINATION "${CMAKE_INSTALL_BINDIR}/Character Files")
+    install(FILES packaging/linux/org.fantasoft.realmz.desktop DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications")
+    install(FILES packaging/linux/realmz.png DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps")
+    install(FILES
+        $<TARGET_FILE:SDL3-shared> $<TARGET_SONAME_FILE:SDL3-shared>
+        $<TARGET_FILE:SDL3_ttf-shared> $<TARGET_SONAME_FILE:SDL3_ttf-shared>
+        $<TARGET_FILE:SDL3_image-shared> $<TARGET_SONAME_FILE:SDL3_image-shared>
+        DESTINATION ${CMAKE_INSTALL_BINDIR})
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_FLAGS MATCHES "-stdlib=libc\\+\\+")
+        foreach(REALMZ_RUNTIME libc++.so.1 libc++abi.so.1 libunwind.so.1)
+            find_file(REALMZ_RUNTIME_PATH NAMES ${REALMZ_RUNTIME}
+                PATHS /usr/lib/llvm-21/lib /usr/lib/x86_64-linux-gnu REQUIRED NO_CACHE)
+            file(REAL_PATH "${REALMZ_RUNTIME_PATH}" REALMZ_RUNTIME_REALPATH)
+            install(FILES "${REALMZ_RUNTIME_REALPATH}" DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME "${REALMZ_RUNTIME}")
+            unset(REALMZ_RUNTIME_PATH)
+        endforeach()
+    endif()
+    set_target_properties(Realmz PROPERTIES INSTALL_RPATH "$ORIGIN" BUILD_WITH_INSTALL_RPATH TRUE)
+    install(CODE "set(REALMZ_BINDIR \"${CMAKE_INSTALL_BINDIR}\")\ninclude(\"${CMAKE_SOURCE_DIR}/packaging/linux/fix-rpath.cmake\")")
 endif()
 
 
@@ -455,5 +517,8 @@ elseif(APPLE)
     set(CPACK_BUNDLE_PLIST "${PROJECT_BINARY_DIR}/Info.plist")
     set(CPACK_BUNDLE_ICON "${PROJECT_SOURCE_DIR}/bundle/AppIcon.icns")
     set(CPACK_BUNDLE_STARTUP_COMMAND Realmz)
+elseif(UNIX)
+    set(CPACK_GENERATOR "TGZ")
+    set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${Realmz_VERSION}-Linux")
 endif()
 include(CPack)

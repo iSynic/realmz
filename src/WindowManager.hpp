@@ -176,6 +176,9 @@ public:
   void set_aspect_locked(bool locked);
 
   void set_window_size(int w, int h);
+#ifdef __linux__
+  void on_linux_window_resized();
+#endif
   bool size_fits(int w, int h) const;
   void get_window_size(int* w, int* h) const;
   bool is_fullscreen() const;
@@ -185,6 +188,10 @@ public:
   void save_prefs();
 
 private:
+#ifdef __linux__
+  int linux_last_outer_w = 0;
+  int linux_last_outer_h = 0;
+#endif
   void print_window_stack() const;
   void verify_window_stack() const;
 };

@@ -154,15 +154,30 @@ FILE* mac_fopen(const char* filename, const char* mode) {
   std::string user_filename = userdata_filename_for_mac_filename(filename);
   std::string host_filename{};
 
-  // When writing, we should always write to the userdata folder. When
-  // reading, we should first check to see if the file exists in the user's directory,
-  // which allows users to override the data and resource files.
+#ifdef __linux__
+  // A writable open must never mutate bundled game data. For r+ and a+,
+  // preserve the bundled bytes on the first write by copying them into the
+  // user directory before opening the file there.
+  bool writable = mode[0] == 'w' || mode[0] == 'a' || strchr(mode, '+') != nullptr;
+  if (writable || std::filesystem::exists(user_filename)) {
+#else
   if (mode[0] == 'w' || std::filesystem::exists(user_filename)) {
+#endif
     host_filename = user_filename;
 
     // Ensure all parent directories exist
     std::filesystem::path host_path{host_filename};
     SDL_CreateDirectory(host_path.parent_path().string().c_str());
+#ifdef __linux__
+    if (writable && mode[0] != 'w' && !std::filesystem::exists(user_filename)) {
+      auto bundled = host_filename_for_mac_filename(filename, false);
+      if (std::filesystem::is_regular_file(bundled)) {
+        std::error_code error;
+        std::filesystem::copy_file(bundled, user_filename, std::filesystem::copy_options::none, error);
+        if (error) fm_log.warning_f("Could not copy {} to {}: {}", bundled, user_filename, error.message());
+      }
+    }
+#endif
   } else {
     // Otherwise, fall back to reading the file from the Realmz application directory
     host_filename = host_filename_for_mac_filename(filename, false);

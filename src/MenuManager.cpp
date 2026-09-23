@@ -8,6 +8,7 @@
 #include "WindowManager.hpp"
 #include <functional>
 #include <list>
+#include <unordered_set>
 #include <phosg/Strings.hh>
 #include <resource_file/ResourceFile.hh>
 #include <stdexcept>
@@ -128,22 +129,30 @@ public:
     if (!this->cur_menu_list) {
       return 0;
     }
-    ch = toupper(ch);
-    for (const auto& menu_set : {this->cur_menu_list->menus, this->cur_menu_list->submenus}) {
-      for (const auto& menu : menu_set) {
-        if (!menu->enabled) {
-          continue;
-        }
-        for (size_t item_id = 0; item_id < menu->items.size(); item_id++) {
-          const auto& item = menu->items[item_id];
-          if (!item.enabled) {
-            continue;
-          }
-          if (toupper(item.key_equivalent) == ch) {
-            return (menu->menu_id << 16) | item_id;
+    if (!ch) return 0;
+    ch = static_cast<char>(toupper(static_cast<unsigned char>(ch)));
+    std::unordered_set<int16_t> visited;
+    std::function<int32_t(const std::shared_ptr<Menu>&)> search;
+    search = [&](const std::shared_ptr<Menu>& menu) -> int32_t {
+      if (!menu->enabled || !visited.insert(menu->menu_id).second) return 0;
+      for (size_t i = 0; i < menu->items.size(); ++i) {
+        const auto& item = menu->items[i];
+        if (item.enabled && item.key_equivalent && item.key_equivalent != 0x1B &&
+            toupper(static_cast<unsigned char>(item.key_equivalent)) == ch)
+          return (static_cast<int32_t>(menu->menu_id) << 16) | (i + 1);
+      }
+      for (const auto& item : menu->items) {
+        if (!item.enabled || item.key_equivalent != 0x1B || !item.mark_character) continue;
+        for (const auto& sub : this->cur_menu_list->submenus) {
+          if (sub->menu_id == static_cast<uint8_t>(item.mark_character)) {
+            if (auto found = search(sub)) return found;
           }
         }
       }
+      return 0;
+    };
+    for (const auto& menu : this->cur_menu_list->menus) {
+      if (auto found = search(menu)) return found;
     }
     return 0;
   }
@@ -298,7 +307,11 @@ int32_t PopUpMenuSelect(MenuHandle menu, int16_t top, int16_t left, int16_t popU
   if (auto* renderer = SDL_GetRenderer(sdl_window.get())) {
     float window_x = 0.0f;
     float window_y = 0.0f;
+    #ifdef __linux__
+    if (SDL_RenderCoordinatesToWindow(renderer, left, top + 26, &window_x, &window_y)) {
+    #else
     if (SDL_RenderCoordinatesToWindow(renderer, left, top, &window_x, &window_y)) {
+    #endif
       win_left = static_cast<int16_t>(SDL_lroundf(window_x));
       win_top = static_cast<int16_t>(SDL_lroundf(window_y));
     }
@@ -310,7 +323,11 @@ int32_t PopUpMenuSelect(MenuHandle menu, int16_t top, int16_t left, int16_t popU
   // Wait for either an item to be selected and fire the callback to modify result, or for
   // the menu to be closed without a selection, which will fire the callback with 0 as the result.
   while (result == -1) {
+    #ifdef __linux__
+    PumpSDLMenuEvents(16);
+    #else
     SDL_Delay(1);
+    #endif
   }
 
   return result;
@@ -322,7 +339,11 @@ int16_t CountMItems(MenuHandle theMenu) {
 }
 
 int32_t MenuKey(int16_t ch) {
+#ifdef __linux__
+  return mm.find_item_by_key_equivalent(static_cast<char>(ch));
+#else
   return 0;
+#endif
 }
 
 void MM_SetItemIcon(MenuHandle theMenu, int16_t item, int16_t iconID) {

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Realmz
+Comment=Classic fantasy role-playing game
+Exec=Realmz
+Icon=realmz
+Categories=Game;RolePlaying;
+Terminal=false

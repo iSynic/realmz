@@ -1,0 +1,343 @@
+name: Release builds
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Label used for manually-built artifacts (publishing requires a pushed v* tag)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  PHOSG_REV: b2e0c12edb7e274a5e20c460f44eee44f49f57ef
+  RESOURCE_DASM_REV: 27f64c89a5fed855e68c2a5e97b6c6c389d8eb19
+  RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+
+jobs:
+  windows:
+    name: Windows
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build tools
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: CLANG64
+          update: true
+          install: >-
+            git
+            mingw-w64-clang-x86_64-cmake
+            mingw-w64-clang-x86_64-ninja
+            mingw-w64-clang-x86_64-toolchain
+            mingw-w64-clang-x86_64-zlib
+
+      - name: Download SDL_ttf dependencies
+        run: |
+          if [ ! -f vendored/SDL_ttf/external/freetype/CMakeLists.txt ]; then
+            sed -i 's/\r$//' vendored/SDL_ttf/external/download.sh vendored/SDL_ttf/.gitmodules
+            bash vendored/SDL_ttf/external/download.sh
+          fi
+
+      - name: Build phosg and resource_dasm
+        run: |
+          set -euxo pipefail
+          deps="$RUNNER_TEMP/realmz-deps"
+          mkdir -p "$deps"
+          git clone https://github.com/fuzziqersoftware/phosg "$RUNNER_TEMP/phosg"
+          git -C "$RUNNER_TEMP/phosg" checkout "$PHOSG_REV"
+          cmake -S "$RUNNER_TEMP/phosg" -B "$RUNNER_TEMP/phosg-build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$deps"
+          cmake --build "$RUNNER_TEMP/phosg-build" --parallel
+          cmake --install "$RUNNER_TEMP/phosg-build"
+
+          git clone https://github.com/fuzziqersoftware/resource_dasm "$RUNNER_TEMP/resource_dasm"
+          git -C "$RUNNER_TEMP/resource_dasm" checkout "$RESOURCE_DASM_REV"
+          cmake -S "$RUNNER_TEMP/resource_dasm" -B "$RUNNER_TEMP/resource_dasm-build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$deps" \
+            -DCMAKE_PREFIX_PATH="$deps"
+          cmake --build "$RUNNER_TEMP/resource_dasm-build" --parallel
+          cmake --install "$RUNNER_TEMP/resource_dasm-build"
+
+      - name: Build and install Realmz
+        run: |
+          set -euxo pipefail
+          cmake -S . -B build-release -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/realmz-deps;/clang64" \
+            -DSDLTTF_VENDORED=ON \
+            -DSDLIMAGE_VENDORED=OFF
+          cmake --build build-release --target Realmz --parallel
+          cmake --install build-release --prefix install
+          cp /clang64/bin/libc++.dll install/bin/
+          cp /clang64/bin/libunwind.dll install/bin/
+          cp /clang64/bin/zlib1.dll install/bin/
+          test -f install/bin/Realmz.exe
+          for runtime in SDL3.dll SDL3_ttf.dll SDL3_image.dll libc++.dll libunwind.dll zlib1.dll; do
+            test -f "install/bin/$runtime"
+          done
+
+      - name: Package Windows build
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "$env:GITHUB_WORKSPACE\install\bin\*" `
+            -DestinationPath "$env:GITHUB_WORKSPACE\Realmz-$env:RELEASE_TAG-Windows.zip"
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Realmz-Windows
+          path: Realmz-*-Windows.zip
+
+  macos:
+    name: macOS universal
+    runs-on: macos-14
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build tools
+        run: brew install ninja
+
+      - name: Cache native dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/realmz-deps
+          key: macos-universal-deps-${{ env.PHOSG_REV }}-${{ env.RESOURCE_DASM_REV }}
+
+      - name: Build native dependencies
+        run: |
+          set -euxo pipefail
+          deps="$RUNNER_TEMP/realmz-deps"
+          if [ ! -f "$deps/lib/cmake/phosg/phosgConfig.cmake" ]; then
+            mkdir -p "$deps"
+            git clone https://github.com/fuzziqersoftware/phosg "$RUNNER_TEMP/phosg"
+            git -C "$RUNNER_TEMP/phosg" checkout "$PHOSG_REV"
+            cmake -S "$RUNNER_TEMP/phosg" -B "$RUNNER_TEMP/phosg-build" -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$deps" \
+              -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3
+            cmake --build "$RUNNER_TEMP/phosg-build" --parallel
+            cmake --install "$RUNNER_TEMP/phosg-build"
+
+            git clone https://github.com/fuzziqersoftware/resource_dasm "$RUNNER_TEMP/resource_dasm"
+            git -C "$RUNNER_TEMP/resource_dasm" checkout "$RESOURCE_DASM_REV"
+            cmake -S "$RUNNER_TEMP/resource_dasm" -B "$RUNNER_TEMP/resource_dasm-build" -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$deps" \
+              -DCMAKE_PREFIX_PATH="$deps" \
+              -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3
+            cmake --build "$RUNNER_TEMP/resource_dasm-build" --parallel
+            cmake --install "$RUNNER_TEMP/resource_dasm-build"
+          fi
+
+      - name: Download SDL_ttf dependencies
+        run: |
+          if [ ! -f vendored/SDL_ttf/external/freetype/CMakeLists.txt ]; then
+            bash vendored/SDL_ttf/external/download.sh
+          fi
+
+      - name: Build macOS package
+        run: |
+          set -euxo pipefail
+          cmake -S . -B build-macos -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/realmz-deps" \
+            -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3 \
+            -DSDLTTF_VENDORED=ON \
+            -DSDLIMAGE_VENDORED=OFF
+          cmake --build build-macos --target package --parallel
+          dmg=$(find build-macos -maxdepth 1 -name '*.dmg' -print -quit)
+          test -n "$dmg"
+          hdiutil attach "$dmg" -nobrowse -noautoopen -plist > mount.plist
+          mountpoint=$(python3 -c 'import plistlib; entities=plistlib.load(open("mount.plist","rb"))["system-entities"]; print(next(entity["mount-point"] for entity in entities if entity.get("mount-point")))')
+          test -x "$mountpoint/Realmz.app/Contents/MacOS/Realmz"
+          test -d "$mountpoint/Realmz.app/Contents/Resources/lib"
+          find "$mountpoint/Realmz.app/Contents/Resources/lib" -type f -name 'libSDL3*.dylib' -print -quit | grep -q .
+          /usr/libexec/PlistBuddy -c 'Print :NSHighResolutionCapable' "$mountpoint/Realmz.app/Contents/Info.plist" | grep -q true
+          lipo "$mountpoint/Realmz.app/Contents/MacOS/Realmz" -verify_arch x86_64
+          lipo "$mountpoint/Realmz.app/Contents/MacOS/Realmz" -verify_arch arm64
+          hdiutil detach "$mountpoint"
+          mv "$dmg" "Realmz-$RELEASE_TAG-macOS.dmg"
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Realmz-macOS
+          path: Realmz-*-macOS.dmg
+
+  linux:
+    name: Linux
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes curl gnupg ca-certificates
+          curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/llvm-snapshot.gpg
+          echo 'deb [signed-by=/usr/share/keyrings/llvm-snapshot.gpg] http://apt.llvm.org/jammy/ llvm-toolchain-jammy-21 main' | sudo tee /etc/apt/sources.list.d/llvm-21.list
+          sudo apt-get update
+          sudo apt-get install --yes \
+            clang-21 lld-21 libc++-21-dev libc++abi-21-dev libunwind-21-dev \
+            ninja-build python3-pip pkg-config zlib1g-dev binutils file patchelf desktop-file-utils \
+            xvfb weston libwayland-dev wayland-protocols libxkbcommon-dev libdecor-0-dev \
+            libasound2-dev libpulse-dev libegl-dev \
+            libx11-dev libxext-dev libxrandr-dev libxinerama-dev \
+            libxcursor-dev libxi-dev libxfixes-dev libxrender-dev \
+            libxss-dev libxtst-dev
+          python3 -m pip install --user cmake==3.31.9
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/cmake" --version
+
+      - name: Cache native dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/realmz-deps
+          key: linux-llvm21-deps-${{ env.PHOSG_REV }}-${{ env.RESOURCE_DASM_REV }}
+
+      - name: Build native dependencies
+        run: |
+          set -euxo pipefail
+          deps="$RUNNER_TEMP/realmz-deps"
+          if [ ! -f "$deps/lib/cmake/phosg/phosgConfig.cmake" ]; then
+            mkdir -p "$deps"
+            git clone https://github.com/fuzziqersoftware/phosg "$RUNNER_TEMP/phosg"
+            git -C "$RUNNER_TEMP/phosg" checkout "$PHOSG_REV"
+            cmake -S "$RUNNER_TEMP/phosg" -B "$RUNNER_TEMP/phosg-build" -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$deps" \
+              -DCMAKE_C_COMPILER=clang-21 -DCMAKE_CXX_COMPILER=clang++-21 \
+              -DCMAKE_CXX_FLAGS=-stdlib=libc++
+            cmake --build "$RUNNER_TEMP/phosg-build" --parallel
+            cmake --install "$RUNNER_TEMP/phosg-build"
+
+            git clone https://github.com/fuzziqersoftware/resource_dasm "$RUNNER_TEMP/resource_dasm"
+            git -C "$RUNNER_TEMP/resource_dasm" checkout "$RESOURCE_DASM_REV"
+            cmake -S "$RUNNER_TEMP/resource_dasm" -B "$RUNNER_TEMP/resource_dasm-build" -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$deps" \
+              -DCMAKE_PREFIX_PATH="$deps" \
+              -DCMAKE_C_COMPILER=clang-21 -DCMAKE_CXX_COMPILER=clang++-21 \
+              -DCMAKE_CXX_FLAGS=-stdlib=libc++
+            cmake --build "$RUNNER_TEMP/resource_dasm-build" --parallel
+            cmake --install "$RUNNER_TEMP/resource_dasm-build"
+          fi
+
+      - name: Download SDL_ttf dependencies
+        run: |
+          if [ ! -f vendored/SDL_ttf/external/freetype/CMakeLists.txt ]; then
+            bash vendored/SDL_ttf/external/download.sh
+          fi
+
+      - name: Build and package Linux build
+        run: |
+          set -euxo pipefail
+          cmake -S . -B build-linux -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang-21 \
+            -DCMAKE_CXX_COMPILER=clang++-21 \
+            -DCMAKE_CXX_FLAGS=-stdlib=libc++ \
+            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/realmz-deps" \
+            -DSDL_X11=ON -DSDL_WAYLAND=ON -DSDL_ALSA=ON -DSDL_PULSEAUDIO=ON \
+            -DSDLTTF_VENDORED=ON \
+            -DSDLIMAGE_VENDORED=OFF
+          build_config=$(find build-linux/vendored/SDL -name SDL_build_config.h -print -quit)
+          test -n "$build_config"
+          for driver in SDL_VIDEO_DRIVER_X11 SDL_VIDEO_DRIVER_WAYLAND \
+                        SDL_AUDIO_DRIVER_ALSA SDL_AUDIO_DRIVER_PULSEAUDIO; do
+            grep -q "#define $driver 1" "$build_config"
+          done
+          cmake --build build-linux --target Realmz LinuxMenuTest LinuxStorageTest --parallel
+          SDL_VIDEODRIVER=x11 xvfb-run -a ctest --test-dir build-linux --output-on-failure
+          runtime="$RUNNER_TEMP/realmz-xdg"
+          install -d -m 700 "$runtime"
+          XDG_RUNTIME_DIR="$runtime" weston --backend=headless-backend.so \
+            --socket=realmz-ctest --idle-time=0 >"$RUNNER_TEMP/weston.log" 2>&1 &
+          weston_pid=$!
+          trap 'kill "$weston_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 50); do
+            test ! -S "$runtime/realmz-ctest" || break
+            sleep 0.1
+          done
+          test -S "$runtime/realmz-ctest"
+          XDG_RUNTIME_DIR="$runtime" WAYLAND_DISPLAY=realmz-ctest SDL_VIDEODRIVER=wayland \
+            ctest --test-dir build-linux --output-on-failure
+          kill "$weston_pid"
+          trap - EXIT
+          cmake --build build-linux --target package --parallel
+          package=$(find build-linux -maxdepth 1 -name '*.tar.gz' -print -quit)
+          test -n "$package"
+          bash packaging/linux/verify-package.sh "$package"
+          mv "$package" "Realmz-$RELEASE_TAG-Linux.tar.gz"
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Realmz-Linux
+          path: Realmz-*-Linux.tar.gz
+
+  linux-compat:
+    name: Linux runtime (${{ matrix.os }})
+    needs: linux
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out package validator
+        uses: actions/checkout@v4
+      - name: Download Linux package
+        uses: actions/download-artifact@v4
+        with:
+          name: Realmz-Linux
+      - name: Install desktop smoke-test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes binutils file desktop-file-utils xvfb weston
+      - name: Verify packaged game on a clean runner
+        run: bash packaging/linux/verify-package.sh Realmz-*-Linux.tar.gz
+
+  release:
+    name: Publish GitHub release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, macos, linux, linux-compat]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Create checksums
+        run: sha256sum Realmz-* > SHA256SUMS.txt
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release_flags=()
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            release_flags+=(--prerelease)
+          fi
+          gh release create "$GITHUB_REF_NAME" Realmz-* SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Realmz $GITHUB_REF_NAME" \
+            --generate-notes "${release_flags[@]}"

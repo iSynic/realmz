@@ -83,6 +83,9 @@ void SystemTask(void);
 Boolean GetNextEvent(int16_t mask, EventRecord* ev); // IM1-257
 // EventAvail (IM1-258) not used by Realmz
 void PushMenuEvent(int16_t menu_id, int16_t item_id);
+#ifdef __linux__
+void PumpSDLMenuEvents(int32_t wait_ms);
+#endif
 
 void GetMouse(Point* mouseLoc); // IM1-259
 void GetMouseGlobal(Point* mouseLoc); // extension (not part of original API)
