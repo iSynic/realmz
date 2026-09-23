@@ -34,10 +34,11 @@ public:
       return;
     }
     this->device_id = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, NULL);
-    sm_log.info_f("Using device: {}", SDL_GetAudioDeviceName(this->device_id));
     if (this->device_id == 0) {
       sm_log.warning_f("Failed to open audio: {}", SDL_GetError());
     } else {
+      const char* device_name = SDL_GetAudioDeviceName(this->device_id);
+      sm_log.info_f("Using device: {}", device_name ? device_name : "unknown");
       sm_log.info_f("Audio device paused: {}", SDL_AudioDevicePaused(this->device_id));
     }
   }
@@ -55,10 +56,13 @@ public:
     channel->sdlAudioStream = SDL_CreateAudioStream(&spec, &spec);
     if (channel->sdlAudioStream == NULL) {
       sm_log.warning_f("Could not create SDL audio stream: {}", SDL_GetError());
-      return nullptr;
+      this->all_channels.emplace(channel);
+      return channel;
     }
 
-    SDL_BindAudioStream(this->device_id, channel->sdlAudioStream);
+    if (this->device_id != 0 && !SDL_BindAudioStream(this->device_id, channel->sdlAudioStream)) {
+      sm_log.warning_f("Could not bind audio stream: {}", SDL_GetError());
+    }
     sm_log.info_f("Created output channel on audio stream device: {}", SDL_GetAudioStreamDevice(channel->sdlAudioStream));
 
     if (!SDL_SetAudioStreamFormat(channel->sdlAudioStream, &spec, NULL)) {
@@ -73,6 +77,9 @@ public:
   }
 
   void play_sound(SDL_AudioStream* sdlAudioStream, Handle data_handle, bool async) {
+    if (!sdlAudioStream || SDL_GetAudioStreamDevice(sdlAudioStream) == 0) {
+      return;
+    }
     std::shared_ptr<const Sound> sound;
     try {
       sound = this->sound_for_handle(data_handle);
@@ -106,6 +113,9 @@ public:
   }
 
   void delete_unplayed_audio(SDL_AudioStream* sdlAudioStream) {
+    if (!sdlAudioStream) {
+      return;
+    }
     if (!SDL_ClearAudioStream(sdlAudioStream)) {
       sm_log.warning_f("Could not delete audio stream data: {}", SDL_GetError());
     }
@@ -114,6 +124,9 @@ public:
   void set_global_volume(float gain) {
     this->default_volume = gain;
     for (auto& channel : this->all_channels) {
+      if (!channel->sdlAudioStream) {
+        continue;
+      }
       if (!SDL_SetAudioStreamGain(channel->sdlAudioStream, this->default_volume)) {
         sm_log.warning_f("Could not set audio stream gain: {}", SDL_GetError());
       }
@@ -198,7 +211,7 @@ private:
     return ret;
   }
 
-  SDL_AudioDeviceID device_id;
+  SDL_AudioDeviceID device_id = 0;
   float default_volume = 4.0f / 7.0f;
   std::unordered_set<std::shared_ptr<SndChannel>> all_channels;
   std::unordered_map<Handle, std::shared_ptr<const Sound>> decoded_sounds;

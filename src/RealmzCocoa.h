@@ -41,7 +41,7 @@
 #define GetQDGlobalsThePort() ((CGrafPtr)qd.thePort)
 #define GetQDGlobalsScreenBits(x) (*(x) = qd.screenBits)
 #define QDFlushPortBuffer(x, y)
-#define GetPortPixMap(x) &(((CGrafPtr)(x))->portPixMap);
+#define GetPortPixMap(x) (((CGrafPtr)(x))->portPixMap)
 #define GetPortTextFont(x) ((x)->txFont)
 #define GetPortTextFace(x) ((x)->txFace)
 #define GetPortTextSize(x) ((x)->txSize)
