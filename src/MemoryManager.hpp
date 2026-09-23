@@ -39,3 +39,5 @@ void DisposeHandleTyped(ObjT** handle) {
 }
 
 void add_destroy_callback(Handle handle, std::function<void()> cb);
+
+void EnsureMemoryManagerInitialized();

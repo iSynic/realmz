@@ -154,7 +154,10 @@ static inline void CvtTabMapStatToPc(struct mapstats* x, unsigned int count) {
 #define CvtContactToPc(contactdata)
 
 // These are just arrays of shorts.
-#define CvtFieldToPc(x) CvtTabShortToPc(x, 90 * 90)
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * A field is a two-dimensional short array, passed by address at call sites.
+ */
+#define CvtFieldToPc(x) CvtTabShortToPc((int16_t*)(x), 90 * 90)
 #define CvtLayoutToPc(x) CvtTabShortToPc(x, 8 * 16)
 
 #ifdef __cplusplus

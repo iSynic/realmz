@@ -193,7 +193,11 @@ public:
     }
   };
 
-  ResourceManager() = default;
+  ResourceManager() {
+    // Resource handles are released by File destructors. Keep their owner alive
+    // until this process-wide resource manager has finished shutting down.
+    EnsureMemoryManagerInitialized();
+  }
   ~ResourceManager() = default;
 
   void print_chain() const {

@@ -187,10 +187,17 @@ private:
   std::unordered_map<Handle, std::shared_ptr<HandleMeta>> meta_for_handle;
 };
 
-static MemoryManager memory_manager;
+static MemoryManager& memory_manager() {
+  static MemoryManager instance;
+  return instance;
+}
+
+void EnsureMemoryManagerInitialized() {
+  memory_manager();
+}
 
 Handle NewHandle(Size size) {
-  return reinterpret_cast<Handle>(memory_manager.alloc_handle(size));
+  return reinterpret_cast<Handle>(memory_manager().alloc_handle(size));
 }
 
 Handle NewHandleClear(Size size) {
@@ -210,43 +217,43 @@ Handle NewHandleWithData(const void* data, size_t size) {
 }
 
 void DisposeHandle(Handle handle) {
-  memory_manager.free_handle(handle);
+  memory_manager().free_handle(handle);
 }
 
 void add_destroy_callback(Handle handle, std::function<void()> cb) {
-  memory_manager.add_destroy_callback(handle, cb);
+  memory_manager().add_destroy_callback(handle, cb);
 }
 
 void ReplaceHandle(Handle dest, Handle src) {
-  memory_manager.replace_handle(dest, src);
+  memory_manager().replace_handle(dest, src);
 }
 
 void replace_handle_data(Handle handle, const void* data, size_t size) {
-  memory_manager.replace_handle_data(handle, data, size);
+  memory_manager().replace_handle_data(handle, data, size);
 }
 
 Size GetHandleSize(Handle handle) {
-  return memory_manager.get_handle_meta(handle)->size;
+  return memory_manager().get_handle_meta(handle)->size;
 }
 
 void SetHandleSize(Handle handle, Size new_size) {
-  memory_manager.resize_handle(handle, new_size);
+  memory_manager().resize_handle(handle, new_size);
 }
 
 void HPurge(Handle handle) {
   // We never purge blocks, so we just set memWZErr if the handle is invalid
   // and otherwise ignore this call
-  memory_manager.check_handle_valid(handle);
+  memory_manager().check_handle_valid(handle);
 }
 
 void HNoPurge(Handle handle) {
   // We never purge blocks, so we just set memWZErr if the handle is invalid
   // and otherwise ignore this call
-  memory_manager.check_handle_valid(handle);
+  memory_manager().check_handle_valid(handle);
 }
 
 OSErr MemError() {
-  return memory_manager.get_last_error();
+  return memory_manager().get_last_error();
 }
 
 void BlockMove(const void* srcPtr, void* destPtr, Size byteCount) {
