@@ -79,7 +79,11 @@ xvfb-run -a bash -c '
   cd /
   status=0
   SDL_VIDEODRIVER=x11 timeout 15s "$game_dir/Realmz" >"$output" 2>&1 || status=$?
-  test "$status" -eq 124
+  if [ "$status" -ne 124 ]; then
+    echo "x11 startup exited unexpectedly ($status)" >&2
+    tail -n 80 "$output" >&2
+    exit 1
+  fi
   grep -q "Loading MBAR:" "$output"
 ' _ "$game_dir" "$audit_dir/x11.log"
 

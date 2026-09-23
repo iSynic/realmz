@@ -62,7 +62,11 @@ static inline void CvtTabLongToPc(int32_t* x, unsigned int count) {
     CvtLongToPc(x++);
 }
 
-static inline void CvtTabShortToPc(int16_t* x, unsigned int count) {
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * Accept array pointers used by legacy call sites without changing the bytes swapped.
+ */
+static inline void CvtTabShortToPc(void* data, unsigned int count) {
+  int16_t* x = (int16_t*)data;
   while (count--)
     CvtShortToPc(x++);
 }

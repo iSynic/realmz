@@ -370,12 +370,7 @@ std::string host_resource_filename_for_FSSpec(const FSSpec* fsp, bool allow_miss
 }
 
 void FSpCreateResFile(const FSSpec* spec, OSType creator, OSType fileType, ScriptCode scriptTag) {
-  // It seems that this function is the equivalent of the touch command on
-  // Unix-like systems: it just creates the file if it doesn't exist, and
-  // doesn't open it. (The caller must call OpenResFile if they actually want
-  // to open it.)
-
-  // We ignore Finder info and just create the file itself.
+  // An empty resource fork is valid. The caller opens it separately.
   (void)creator;
   (void)fileType;
   (void)scriptTag;
@@ -384,9 +379,9 @@ void FSpCreateResFile(const FSSpec* spec, OSType creator, OSType fileType, Scrip
   if (filename.empty()) {
     throw std::runtime_error("Cannot create resource file in any known location");
   }
-  int fd = open(filename.c_str(), O_WRONLY | O_CREAT, 0666);
-  if (fd >= 0) {
-    close(fd);
+  if (!std::filesystem::exists(filename)) {
+    std::filesystem::create_directories(std::filesystem::path(filename).parent_path());
+    phosg::save_file(filename, "");
   }
 
   resError = noErr;
@@ -430,12 +425,17 @@ int16_t FSpOpenResFile(const FSSpec* spec, SInt8 permission) {
 
     std::string data = phosg::load_file(host_filename);
     std::shared_ptr<ResourceDASM::ResourceFile> rf;
-    try {
-      rf = std::make_shared<ResourceDASM::ResourceFile>(
-          ResourceDASM::parse_applesingle_appledouble_resource_fork(data));
-      rm_log.info_f("Loaded AppleSingle/AppleDouble resource fork from {}", host_filename.c_str());
-    } catch (const std::runtime_error&) {
+    if (data.empty()) {
+      // AppleSingle detection can throw out_of_range on an empty, valid fork.
       rf = std::make_shared<ResourceDASM::ResourceFile>(ResourceDASM::parse_resource_fork(data));
+    } else {
+      try {
+        rf = std::make_shared<ResourceDASM::ResourceFile>(
+            ResourceDASM::parse_applesingle_appledouble_resource_fork(data));
+        rm_log.info_f("Loaded AppleSingle/AppleDouble resource fork from {}", host_filename.c_str());
+      } catch (const std::runtime_error&) {
+        rf = std::make_shared<ResourceDASM::ResourceFile>(ResourceDASM::parse_resource_fork(data));
+      }
     }
     bool writable = (permission == fsCurPerm) || (permission > fsRdPerm);
     int16_t ret = rm.use(host_filename, rf, writable);
