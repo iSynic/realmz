@@ -1148,13 +1148,13 @@ noreg:
   infosmall.right = 640 + leftshift;
   infosmall.bottom = 460 + downshift;
 
-  if (screensize) //*** expand the cursor ranges for larger screen.
-  {
-    SetRect(&AHEAD_RECT, 80 + leftshift / 2, 0 + downshift / 2, 240 + leftshift / 2, 160 + downshift / 2);
-    SetRect(&BACK_RECT, 80 + leftshift / 2, 160 + downshift / 2, 240 + leftshift / 2, 320 + downshift / 2);
-    SetRect(&TURN_LEFT_RECT, 0 + leftshift / 2, 0 + downshift / 2, 80 + leftshift / 2, 320 + downshift / 2);
-    SetRect(&TURN_RIGHT_RECT, 240 + leftshift / 2, 0 + downshift / 2, 320 + leftshift / 2, 320 + downshift / 2);
-  }
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * Initialize the original 320-pixel navigation regions in both layouts.
+   */
+  SetRect(&AHEAD_RECT, 80 + leftshift / 2, downshift / 2, 240 + leftshift / 2, 160 + downshift / 2);
+  SetRect(&BACK_RECT, 80 + leftshift / 2, 160 + downshift / 2, 240 + leftshift / 2, 320 + downshift / 2);
+  SetRect(&TURN_LEFT_RECT, leftshift / 2, downshift / 2, 80 + leftshift / 2, 320 + downshift / 2);
+  SetRect(&TURN_RIGHT_RECT, 240 + leftshift / 2, downshift / 2, 320 + leftshift / 2, 320 + downshift / 2);
 
   textrect.top = 333 + downshift;
   textrect.left = 12 + (3 * screensize);

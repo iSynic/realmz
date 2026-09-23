@@ -1,5 +1,6 @@
 #include "prototypes.h"
 #include "variables.h"
+#include "UiViewport.h"
 
 /********************************* fastplotmap ***************/
 void fastplotmap(short id, Rect destrect) {
@@ -86,8 +87,8 @@ void showmap(short mapnumber) {
    * NOTE(iSynic): Center Classic 320x320 map content in the enlarged viewport.
    */
   SetRect(&maprect, 0, 0, 320, 320);
-  OffsetRect(&maprect, lookrect.left + ((lookrect.right - lookrect.left) - 320) / 2,
-      lookrect.top + ((lookrect.bottom - lookrect.top) - 320) / 2);
+  OffsetRect(&maprect, lookrect.left + ui_viewport_map_origin(lookrect.right - lookrect.left),
+      lookrect.top + ui_viewport_map_origin(lookrect.bottom - lookrect.top));
   /* *** END CHANGES *** */
 
   if (themap.show < 0) {

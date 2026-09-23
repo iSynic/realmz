@@ -367,13 +367,17 @@ add_test(NAME PortPrefsTest COMMAND PortPrefsTest)
 add_executable(LayoutCanvasTest src/tests/LayoutCanvasTest.cpp)
 target_link_libraries(LayoutCanvasTest PRIVATE realmz_lib)
 add_dependencies(Realmz LayoutCanvasTest)
+add_executable(UiViewportTest src/tests/UiViewportTest.cpp)
+target_include_directories(UiViewportTest PRIVATE src/realmz_orig)
+add_dependencies(Realmz UiViewportTest)
+add_test(NAME UiViewportTest COMMAND UiViewportTest)
 add_test(NAME ClassicNativeCanvasTest COMMAND LayoutCanvasTest classic 1)
 add_test(NAME ClassicEnlargedCanvasTest COMMAND LayoutCanvasTest classic 2)
 add_test(NAME ExpandedNativeCanvasTest COMMAND LayoutCanvasTest expanded 1)
 add_test(NAME ExpandedEnlargedCanvasTest COMMAND LayoutCanvasTest expanded 2)
 if(WIN32)
     get_filename_component(COMPILER_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
-    set_tests_properties(ClassicResourceTest ClassicLayoutIntegrationTest PortPrefsTest
+    set_tests_properties(ClassicResourceTest ClassicLayoutIntegrationTest PortPrefsTest UiViewportTest
         ClassicNativeCanvasTest ClassicEnlargedCanvasTest ExpandedNativeCanvasTest ExpandedEnlargedCanvasTest
         PROPERTIES ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:${COMPILER_BIN_DIR}")
 endif()
