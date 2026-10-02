@@ -7,6 +7,11 @@ short castspell(void) {
   short type, smallclickdirection, keylevel[3], oldkeylevel[3], tempcaste;
   DialogRef describe = NIL;
   Boolean loop, nopower, try, oldred, def, shhh, skipdefault = 0;
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Declare the saved drawing state before labels for the C90 parser.
+   */
+  int enable_recomposite;
+  /* *** END CHANGES *** */
 
   nopower = tier = oldred = def = try = keylevel[1] = keylevel[0] = oldkeylevel[1] = oldkeylevel[0] = 0;
 
@@ -64,7 +69,11 @@ selectagain:
   DrawDialog(spellwindow);
 wayback:
 
-  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Assign the saved drawing state after the label.
+   */
+  enable_recomposite = WindowManager_SetEnableRecomposite(0);
+  /* *** END CHANGES *** */
 
   if ((incombat) || (!charnum)) {
     GetDialogItem(spellwindow, 45, &itemType, &itemHandle, &itemRect);

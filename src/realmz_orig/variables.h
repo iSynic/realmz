@@ -241,6 +241,13 @@ extern short blankround;
 extern int32_t mouseuptime;
 extern Handle myMenuBar, copywright;
 extern int32_t templong;
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * NOTE(iSynic): Give the legacy global a distinct name from POSIX select on modern Unix hosts.
+ */
+#if defined(REALMZ_COCOA) && (defined(__linux__) || defined(__APPLE__))
+#define select realmz_selection
+#endif
+/* *** END CHANGES *** */
 extern short select[6];
 extern Boolean needupdate, shortupdateneed, putup;
 extern short mapshiftx, mapshifty, divineref, itemrefnum, refnum, jewelsrefnum, portraitrefnum;
