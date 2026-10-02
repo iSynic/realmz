@@ -218,7 +218,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes \
-            clang cmake ninja-build pkg-config zlib1g-dev \
+            clang cmake ninja-build pkg-config zlib1g-dev gdb \
             libx11-dev libxext-dev libxrandr-dev libxinerama-dev \
             libxcursor-dev libxi-dev libxfixes-dev libxrender-dev \
             libxss-dev libxtst-dev libasound2-dev libpulse-dev xvfb xauth
@@ -284,7 +284,12 @@ jobs:
           ldd "$executable" | tee linux-dependencies.txt
           ! grep -q "not found" linux-dependencies.txt
           set +e
-          (cd "$bindir" && timeout --kill-after=5s 15s xvfb-run -a env SDL_AUDIODRIVER=dummy ./Realmz) > linux-smoke.log 2>&1
+          if [ '${{ inputs.linux_diagnostics }}' = true ]; then
+            (cd "$bindir" && timeout --kill-after=5s 30s xvfb-run -a env SDL_AUDIODRIVER=dummy ASAN_OPTIONS=detect_leaks=0 \
+              gdb --batch -ex 'set print thread-events off' -ex run -ex 'thread apply all bt' --args ./Realmz) > linux-smoke.log 2>&1
+          else
+            (cd "$bindir" && timeout --kill-after=5s 15s xvfb-run -a env SDL_AUDIODRIVER=dummy ./Realmz) > linux-smoke.log 2>&1
+          fi
           smoke_status=$?
           set -e
           cat linux-smoke.log
