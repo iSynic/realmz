@@ -18,6 +18,7 @@ project(Realmz
     DESCRIPTION "Classic turn-based RPG from Fantasoft"
     LANGUAGES C CXX
 )
+include(GNUInstallDirs)
 # Enable Objective-C only on macOS (needed for MenuController.mm)
 if(APPLE)
     enable_language(OBJC)
@@ -255,6 +256,8 @@ elseif(WIN32)
     list(APPEND realmz_lib_LINK_LIBRARIES
         bcrypt # Used by phosg::phosg during compilation for windows targets
     )
+elseif(UNIX)
+    list(APPEND SOURCES src/linux/MenuController.cpp)
 endif()
 
 # Installed in Contents/Resources
@@ -403,8 +406,19 @@ if(APPLE)
     # specify directly in the Mach-0 executable the directories in which runtime libraries may
     # be found. By default, LIBRARY artifacts will be installed to Resources/lib in the bundle,
     # so we set the RPATH below to this directory.
-    install(IMPORTED_RUNTIME_ARTIFACTS Realmz RUNTIME_DEPENDENCY_SET runtimeDeps)
-    install(RUNTIME_DEPENDENCY_SET runtimeDeps LIBRARY)
+    install(TARGETS Realmz RUNTIME DESTINATION "MacOS")
+    install(FILES
+        $<TARGET_FILE:SDL3-shared>
+        $<TARGET_SONAME_FILE:SDL3-shared>
+        $<TARGET_LINKER_FILE:SDL3-shared>
+        $<TARGET_FILE:SDL3_ttf-shared>
+        $<TARGET_SONAME_FILE:SDL3_ttf-shared>
+        $<TARGET_LINKER_FILE:SDL3_ttf-shared>
+        $<TARGET_FILE:SDL3_image-shared>
+        $<TARGET_SONAME_FILE:SDL3_image-shared>
+        $<TARGET_LINKER_FILE:SDL3_image-shared>
+        DESTINATION "lib"
+    )
 
     # Manually set the rpath to avoid CMake automatically adding hardcoded build machine paths
     set_target_properties(Realmz PROPERTIES
@@ -438,6 +452,29 @@ elseif(WIN32)
         message("Found asan lib at ${libasan}")
         install(FILES ${libc++} ${libunwind} ${libasan} DESTINATION ${CMAKE_INSTALL_BINDIR})
     endif()
+elseif(UNIX)
+    install(TARGETS Realmz DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES ${RESOURCE_FILES} DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES ${DATA_RESOURCE_FILES} DESTINATION "${CMAKE_INSTALL_BINDIR}/Data Files")
+    install(DIRECTORY "base/Realmz/Scenarios" DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(DIRECTORY "base/Realmz/Realmz Music" DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES ${CHARACTER_DATA_FILES} DESTINATION "${CMAKE_INSTALL_BINDIR}/Character Files")
+    install(FILES
+        $<TARGET_FILE:SDL3-shared>
+        $<TARGET_SONAME_FILE:SDL3-shared>
+        $<TARGET_LINKER_FILE:SDL3-shared>
+        $<TARGET_FILE:SDL3_ttf-shared>
+        $<TARGET_SONAME_FILE:SDL3_ttf-shared>
+        $<TARGET_LINKER_FILE:SDL3_ttf-shared>
+        $<TARGET_FILE:SDL3_image-shared>
+        $<TARGET_SONAME_FILE:SDL3_image-shared>
+        $<TARGET_LINKER_FILE:SDL3_image-shared>
+        DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+    set_target_properties(Realmz PROPERTIES
+        INSTALL_RPATH "$ORIGIN"
+        BUILD_WITH_INSTALL_RPATH TRUE
+    )
 endif()
 
 
@@ -458,5 +495,8 @@ elseif(APPLE)
     set(CPACK_BUNDLE_PLIST "${PROJECT_BINARY_DIR}/Info.plist")
     set(CPACK_BUNDLE_ICON "${PROJECT_SOURCE_DIR}/bundle/AppIcon.icns")
     set(CPACK_BUNDLE_STARTUP_COMMAND Realmz)
+elseif(UNIX)
+    set(CPACK_GENERATOR "TGZ")
+    set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${Realmz_VERSION}-Linux")
 endif()
 include(CPack)

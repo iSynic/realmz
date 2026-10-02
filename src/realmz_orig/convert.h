@@ -57,25 +57,33 @@ static inline void CvtRectToPc(Rect* x) {
   rintel2moto(x);
 }
 
-static inline void CvtTabLongToPc(int32_t* x, unsigned int count) {
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * NOTE(iSynic): Accept array and element pointers without changing byte conversion or counts.
+ */
+static inline void CvtTabLongToPc(void* data, unsigned int count) {
+  int32_t* x = (int32_t*)data;
   while (count--)
     CvtLongToPc(x++);
 }
 
-static inline void CvtTabShortToPc(int16_t* x, unsigned int count) {
+static inline void CvtTabShortToPc(void* data, unsigned int count) {
+  int16_t* x = (int16_t*)data;
   while (count--)
     CvtShortToPc(x++);
 }
 
-static inline void CvtTabBoolToPc(Boolean* x, unsigned int count) {
+static inline void CvtTabBoolToPc(void* data, unsigned int count) {
+  Boolean* x = (Boolean*)data;
   while (count--)
     CvtBoolToPc(x++);
 }
 
-static inline void CvtTabRectToPc(Rect* x, unsigned int count) {
+static inline void CvtTabRectToPc(void* data, unsigned int count) {
+  Rect* x = (Rect*)data;
   while (count--)
     rintel2moto(x++);
 }
+/* *** END CHANGES *** */
 
 // These structs are all shorts, and can be treated as an array.
 #define CVT_ALL_SHORTS(x) CvtTabShortToPc((short*)(x), (sizeof(*(x)) / 2))
@@ -108,12 +116,17 @@ void CvtShopToPc(struct shop* x);
 void CvtRestrictionInfoToPc(struct restrictinfo* x);
 void CvtPrefsToPc(PrefRecord* x);
 
-static inline void CvtTabItemAttrToPc(struct itemattr* x, unsigned int count) {
+/* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+ * NOTE(iSynic): Accept legacy array addresses and retain each element's conversion.
+ */
+static inline void CvtTabItemAttrToPc(void* data, unsigned int count) {
+  struct itemattr* x = (struct itemattr*)data;
   while (count--)
     CvtItemAttrToPc(x++);
 }
 
-static inline void CvtTabItemToPc(struct item* x, unsigned int count) {
+static inline void CvtTabItemToPc(void* data, unsigned int count) {
+  struct item* x = (struct item*)data;
   // Inexplicably, this means a count of 30 items.
   count *= 30;
 
@@ -121,25 +134,30 @@ static inline void CvtTabItemToPc(struct item* x, unsigned int count) {
     CvtItemToPc(x++);
 }
 
-static inline void CvtTabDoorToPc(struct door* x, unsigned int count) {
+static inline void CvtTabDoorToPc(void* data, unsigned int count) {
+  struct door* x = (struct door*)data;
   while (count--)
     CvtDoorToPc(x++);
 }
 
-static inline void CvtTabMonsterToPc(struct monster* x, unsigned int count) {
+static inline void CvtTabMonsterToPc(void* data, unsigned int count) {
+  struct monster* x = (struct monster*)data;
   while (count--)
     CvtMonsterToPc(x++);
 }
 
-static inline void CvtTabCharacterToPc(struct character* x, unsigned int count) {
+static inline void CvtTabCharacterToPc(void* data, unsigned int count) {
+  struct character* x = (struct character*)data;
   while (count--)
     CvtCharacterToPc(x++);
 }
 
-static inline void CvtTabMapStatToPc(struct mapstats* x, unsigned int count) {
+static inline void CvtTabMapStatToPc(void* data, unsigned int count) {
+  struct mapstats* x = (struct mapstats*)data;
   while (count--)
     CvtMapStatToPc(x++);
 }
+/* *** END CHANGES *** */
 
 /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
  * NOTE(jpetrie): CvtTabSpellToPc and CvtContactToPc were originally just #define'd to nothing as they are no longer

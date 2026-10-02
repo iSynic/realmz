@@ -17,6 +17,11 @@ short items(void) {
   char backvalue = 0;
   Boolean equip, play, ident;
   Rect r;
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Keep the declaration before the backup label for Clang's C90 parser.
+   */
+  int enable_recomposite;
+  /* *** END CHANGES *** */
 
   SetMenuBar(copywright);
   DrawMenuBar();
@@ -155,7 +160,11 @@ short items(void) {
 
 backup:
 
-  int enable_recomposite = WindowManager_SetEnableRecomposite(0);
+  /* *** CHANGED FROM ORIGINAL IMPLEMENTATION ***
+   * NOTE(iSynic): Assign the function-scope variable after the label.
+   */
+  enable_recomposite = WindowManager_SetEnableRecomposite(0);
+  /* *** END CHANGES *** */
 
   SetPort(GetWindowPort(itemswindow));
   TextMode(0);
