@@ -337,6 +337,12 @@ target_link_libraries(Realmz
     realmz_lib
 )
 
+option(REALMZ_ENABLE_ASAN "Instrument Realmz code with AddressSanitizer" OFF)
+if(REALMZ_ENABLE_ASAN)
+    target_compile_options(realmz_lib PUBLIC -g -fsanitize=address -fno-omit-frame-pointer)
+    target_link_options(Realmz PRIVATE -fsanitize=address)
+endif()
+
 if(NOT WIN32 AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_options(Realmz PRIVATE -fsanitize=address)
     target_link_options(Realmz PRIVATE -fsanitize=address)
