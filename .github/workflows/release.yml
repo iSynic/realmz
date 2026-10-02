@@ -128,11 +128,17 @@ jobs:
       - name: Install build tools
         run: brew install ninja
 
+      - name: Identify macOS toolchain
+        id: toolchain
+        run: |
+          fingerprint=$(clang++ --version | shasum -a 256 | cut -d' ' -f1)
+          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+
       - name: Cache native dependencies
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/realmz-deps
-          key: macos-universal-deps-${{ env.PHOSG_REV }}-${{ env.RESOURCE_DASM_REV }}
+          key: macos-universal-deps-${{ steps.toolchain.outputs.fingerprint }}-${{ env.PHOSG_REV }}-${{ env.RESOURCE_DASM_REV }}
 
       - name: Build native dependencies
         run: |
@@ -223,11 +229,17 @@ jobs:
             libxcursor-dev libxi-dev libxfixes-dev libxrender-dev \
             libxss-dev libxtst-dev libasound2-dev libpulse-dev xvfb xauth
 
+      - name: Identify Linux toolchain
+        id: toolchain
+        run: |
+          fingerprint=$({ clang++ --version; clang++ -v -E -x c++ /dev/null 2>&1; echo '#include <version>' | clang++ -dM -E -x c++ -; } | sha256sum | cut -d' ' -f1)
+          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+
       - name: Cache native dependencies
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/realmz-deps
-          key: linux-deps-${{ env.PHOSG_REV }}-${{ env.RESOURCE_DASM_REV }}
+          key: linux-clang-deps-${{ steps.toolchain.outputs.fingerprint }}-${{ env.PHOSG_REV }}-${{ env.RESOURCE_DASM_REV }}
 
       - name: Build native dependencies
         run: |
@@ -238,14 +250,14 @@ jobs:
             git clone https://github.com/fuzziqersoftware/phosg "$RUNNER_TEMP/phosg"
             git -C "$RUNNER_TEMP/phosg" checkout "$PHOSG_REV"
             cmake -S "$RUNNER_TEMP/phosg" -B "$RUNNER_TEMP/phosg-build" -G Ninja \
-              -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$deps"
+              -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$deps" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
             cmake --build "$RUNNER_TEMP/phosg-build" --parallel
             cmake --install "$RUNNER_TEMP/phosg-build"
 
             git clone https://github.com/fuzziqersoftware/resource_dasm "$RUNNER_TEMP/resource_dasm"
             git -C "$RUNNER_TEMP/resource_dasm" checkout "$RESOURCE_DASM_REV"
             cmake -S "$RUNNER_TEMP/resource_dasm" -B "$RUNNER_TEMP/resource_dasm-build" -G Ninja \
-              -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$deps" \
+              -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$deps" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
               -DCMAKE_PREFIX_PATH="$deps"
             cmake --build "$RUNNER_TEMP/resource_dasm-build" --parallel
             cmake --install "$RUNNER_TEMP/resource_dasm-build"
