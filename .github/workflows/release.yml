@@ -7,6 +7,11 @@ on:
         description: "Label used for test-build artifacts; releases are published after package verification"
         required: false
         type: string
+      linux_diagnostics:
+        description: "Run only Linux with AddressSanitizer for startup diagnostics"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -19,6 +24,7 @@ env:
 jobs:
   windows:
     name: Windows
+    if: ${{ !inputs.linux_diagnostics }}
     runs-on: windows-2022
     defaults:
       run:
@@ -40,6 +46,7 @@ jobs:
           update: true
           install: >-
             git
+            diffutils
             mingw-w64-clang-x86_64-cmake
             mingw-w64-clang-x86_64-ninja
             mingw-w64-clang-x86_64-toolchain
@@ -106,6 +113,7 @@ jobs:
 
   macos:
     name: macOS universal
+    if: ${{ !inputs.linux_diagnostics }}
     runs-on: macos-14
     steps:
       - name: Check out source
@@ -252,14 +260,20 @@ jobs:
       - name: Build and package Linux build
         run: |
           set -euxo pipefail
+          diagnostic_flags=()
+          if [ '${{ inputs.linux_diagnostics }}' = true ]; then
+            diagnostic_flags+=("-DCMAKE_C_FLAGS=-g -fsanitize=address -fno-omit-frame-pointer")
+            diagnostic_flags+=("-DCMAKE_CXX_FLAGS=-g -fsanitize=address -fno-omit-frame-pointer")
+            diagnostic_flags+=("-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address")
+          fi
           cmake -S . -B build-linux -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang++ \
             -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/realmz-deps" \
             -DSDLTTF_VENDORED=ON \
-            -DSDLIMAGE_VENDORED=OFF
-          cmake --build build-linux --target package --parallel
+            -DSDLIMAGE_VENDORED=OFF "${diagnostic_flags[@]}"
+          cmake --build build-linux --target package --parallel -- -k 0
           package=$(find build-linux -maxdepth 1 -name '*.tar.gz' -print -quit)
           test -n "$package"
           mkdir -p "$RUNNER_TEMP/music-package"
